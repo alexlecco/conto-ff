@@ -31,7 +31,9 @@ interface RawBar {
 }
 
 interface RawData {
-  bars: RawBar[];
+  conto: {
+    bars: RawBar[];
+  };
 }
 
 let cachedMenu: MenuCategory[] | null = null;
@@ -42,13 +44,13 @@ export function loadPintaTacosMenu(): MenuCategory[] {
   const jsonPath = join(process.cwd(), "data", "backup-db.json");
   const raw: RawData = JSON.parse(readFileSync(jsonPath, "utf-8"));
 
-  const bar = raw.bars.find((b) => b.id === "bar-02-pin");
+  const bar = raw.conto.bars.find((b) => b.id === "bar-02-pin");
 
   if (!bar) {
     throw new Error("Pinta Tacos not found in backup-db.json");
   }
 
-  cachedMenu = bar.menu.map((cat): MenuCategory => ({
+  cachedMenu = bar.menu.categories.map((cat): MenuCategory => ({
     id: cat.id,
     name: cat.name,
     items: cat.items
