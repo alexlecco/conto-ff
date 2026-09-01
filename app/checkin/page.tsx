@@ -30,6 +30,18 @@ export default function CheckinPage() {
       return;
     }
 
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("user_type")
+      .eq("id", user.id)
+      .single();
+
+    if (profile?.user_type === "employee" || profile?.user_type === "admin") {
+      localStorage.setItem("user_type", profile.user_type);
+      router.push("/comanda");
+      return;
+    }
+
     const { error: insertError } = await supabase.from("check_ins").insert({
       user_id: user.id,
       table_number: num,
