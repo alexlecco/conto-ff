@@ -222,11 +222,23 @@ export default function MenuPage() {
   return (
     <div className="min-h-screen bg-background pb-24">
       <div className="sticky top-0 z-40 bg-background border-b border-border">
-        <div className="px-4 py-4">
-          <h1 className="text-xl font-bold text-white">Pinta Tacos</h1>
-          <p className="text-sm text-muted">
-            Mesa {localStorage.getItem("table_number") || "?"}
-          </p>
+        <div className="px-4 py-4 flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold text-white">Pinta Tacos</h1>
+            <p className="text-sm text-muted">
+              Mesa {localStorage.getItem("table_number") || "?"}
+            </p>
+          </div>
+          <button
+            onClick={async () => {
+              await supabase.auth.signOut();
+              localStorage.clear();
+              router.push("/login");
+            }}
+            className="text-sm text-muted hover:text-white transition-colors"
+          >
+            Salir
+          </button>
         </div>
 
         <div className="flex gap-2 px-4 pb-3 overflow-x-auto scrollbar-none">

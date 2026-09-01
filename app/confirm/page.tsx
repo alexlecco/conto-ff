@@ -94,6 +94,7 @@ export default function ConfirmPage() {
       }
 
       localStorage.removeItem("cart");
+      localStorage.setItem("last_order_id", data.order_id);
       router.push("/sent");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al enviar el pedido");

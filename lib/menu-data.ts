@@ -27,7 +27,9 @@ interface RawCategory {
 interface RawBar {
   id: string;
   name: string;
-  menu: RawCategory[];
+  menu: {
+    categories: RawCategory[];
+  };
 }
 
 interface RawData {
