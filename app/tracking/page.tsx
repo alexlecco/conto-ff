@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { useSupabase } from "@/lib/supabase/use-client";
 import { formatPrice } from "@/lib/utils";
 
 interface OrderItem {
@@ -40,13 +40,14 @@ const statusColors: Record<string, string> = {
 
 export default function TrackingPage() {
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = useSupabase();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>("all");
 
   useEffect(() => {
     const init = async () => {
+      if (!supabase) return;
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         router.push("/login");
@@ -93,6 +94,7 @@ export default function TrackingPage() {
   }, [router, supabase]);
 
   useEffect(() => {
+    if (!supabase) return;
     const channel = supabase
       .channel("tracking-changes")
       .on(
@@ -162,7 +164,7 @@ export default function TrackingPage() {
           </div>
           <button
             onClick={async () => {
-              await supabase.auth.signOut();
+              if (supabase) await supabase.auth.signOut();
               localStorage.clear();
               router.push("/login");
             }}

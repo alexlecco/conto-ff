@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { useSupabase } from "@/lib/supabase/use-client";
 
 interface OrderItem {
   id: string;
@@ -50,12 +50,13 @@ const nextStatusLabel: Record<string, string> = {
 
 export default function ComandaPage() {
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = useSupabase();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const init = async () => {
+      if (!supabase) return;
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         router.push("/login");
@@ -103,6 +104,7 @@ export default function ComandaPage() {
   }, [router, supabase]);
 
   useEffect(() => {
+    if (!supabase) return;
     const channel = supabase
       .channel("comanda-changes")
       .on(
@@ -159,6 +161,7 @@ export default function ComandaPage() {
   }, [supabase]);
 
   const updateStatus = async (orderId: string, newStatus: string) => {
+    if (!supabase) return;
     const { error } = await supabase
       .from("orders")
       .update({ status: newStatus })
@@ -189,7 +192,7 @@ export default function ComandaPage() {
           </div>
           <button
             onClick={async () => {
-              await supabase.auth.signOut();
+              if (supabase) await supabase.auth.signOut();
               localStorage.clear();
               router.push("/login");
             }}

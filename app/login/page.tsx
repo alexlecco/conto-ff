@@ -1,14 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { useSupabase } from "@/lib/supabase/use-client";
 
 export default function LoginPage() {
-  const supabase = createClient();
+  const supabase = useSupabase();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleGoogleLogin = async () => {
+    if (!supabase) return;
     setLoading(true);
     setError(null);
     const { error } = await supabase.auth.signInWithOAuth({
@@ -24,6 +25,7 @@ export default function LoginPage() {
   };
 
   const handleInstagramLogin = async () => {
+    if (!supabase) return;
     setLoading(true);
     setError(null);
     const { error } = await supabase.auth.signInWithOAuth({
@@ -76,7 +78,7 @@ export default function LoginPage() {
           <div className="space-y-3">
             <button
               onClick={handleGoogleLogin}
-              disabled={loading}
+              disabled={loading || !supabase}
               className="w-full flex items-center justify-center gap-3 bg-white text-black font-medium py-3 px-6 rounded-full hover:bg-gray-100 transition-colors disabled:opacity-50"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -102,7 +104,7 @@ export default function LoginPage() {
 
             <button
               onClick={handleInstagramLogin}
-              disabled={loading}
+              disabled={loading || !supabase}
               className="w-full flex items-center justify-center gap-3 bg-gradient-to-r from-purple-500 via-pink-500 to-orange-400 text-white font-medium py-3 px-6 rounded-full hover:opacity-90 transition-opacity disabled:opacity-50"
             >
               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">

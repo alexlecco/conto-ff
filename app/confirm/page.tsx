@@ -2,13 +2,13 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { useSupabase } from "@/lib/supabase/use-client";
 import type { CartItem } from "@/types/menu";
 import { formatPrice } from "@/lib/utils";
 
 export default function ConfirmPage() {
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = useSupabase();
   const [cart, setCart] = useState<CartItem[]>([]);
   const [tableNumber, setTableNumber] = useState(0);
   const [customerName, setCustomerName] = useState("Cliente");
@@ -18,6 +18,7 @@ export default function ConfirmPage() {
 
   useEffect(() => {
     const init = async () => {
+      if (!supabase) return;
       const savedCart = localStorage.getItem("cart");
       const savedTable = localStorage.getItem("table_number");
 

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { useSupabase } from "@/lib/supabase/use-client";
 import { formatPrice } from "@/lib/utils";
 
 interface OrderItem {
@@ -39,12 +39,13 @@ const statusColors: Record<string, string> = {
 
 export default function OrdersPage() {
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = useSupabase();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const init = async () => {
+      if (!supabase) return;
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         router.push("/login");
@@ -78,6 +79,7 @@ export default function OrdersPage() {
   }, [router, supabase]);
 
   useEffect(() => {
+    if (!supabase) return;
     const channel = supabase
       .channel("orders-changes")
       .on(

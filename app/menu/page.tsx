@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { useSupabase } from "@/lib/supabase/use-client";
 import type { MenuCategory, MenuItem, MenuItemVariant, CartItem } from "@/types/menu";
 import { formatPrice } from "@/lib/utils";
 
@@ -144,7 +144,7 @@ function MenuItemComponent({
 
 export default function MenuPage() {
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = useSupabase();
   const [menu, setMenu] = useState<MenuCategory[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [activeCategory, setActiveCategory] = useState<string>("");
@@ -157,6 +157,7 @@ export default function MenuPage() {
 
   useEffect(() => {
     const loadMenu = async () => {
+      if (!supabase) return;
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         router.push("/login");
@@ -285,7 +286,7 @@ export default function MenuPage() {
             <h1 className="text-xl font-bold text-white">Pinta Tacos</h1>
             <button
               onClick={async () => {
-                await supabase.auth.signOut();
+                if (supabase) await supabase.auth.signOut();
                 localStorage.clear();
                 router.push("/login");
               }}

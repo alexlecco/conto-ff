@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { useSupabase } from "@/lib/supabase/use-client";
 
 export default function CheckinPage() {
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = useSupabase();
   const [tableNumber, setTableNumber] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -22,6 +22,8 @@ export default function CheckinPage() {
 
     setLoading(true);
     setError(null);
+
+    if (!supabase) return;
 
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -119,7 +121,7 @@ export default function CheckinPage() {
 
           <button
             type="submit"
-            disabled={loading || !tableNumber}
+            disabled={loading || !tableNumber || !supabase}
             className="w-full bg-primary hover:bg-primary-hover text-white font-semibold py-4 px-6 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? "Entrando..." : "Entrar al menú"}
