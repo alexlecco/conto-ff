@@ -1,20 +1,14 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-
-function getOrderId(): string | null {
-  if (typeof window === "undefined") return null;
-  const id = localStorage.getItem("last_order_id");
-  if (id) {
-    localStorage.removeItem("last_order_id");
-  }
-  return id;
-}
 
 export default function SentPage() {
   const router = useRouter();
-  const orderId = useMemo(() => getOrderId(), []);
+
+  useEffect(() => {
+    localStorage.removeItem("last_order_id");
+  }, []);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-background px-6">
@@ -43,14 +37,12 @@ export default function SentPage() {
         </div>
 
         <div className="flex flex-col gap-3">
-          {orderId && (
-            <button
-              onClick={() => router.push(`/order/${orderId}`)}
-              className="bg-primary hover:bg-primary-hover text-white font-semibold py-3 px-8 rounded-full transition-colors"
-            >
-              Ver mi pedido
-            </button>
-          )}
+          <button
+            onClick={() => router.push("/orders")}
+            className="bg-primary hover:bg-primary-hover text-white font-semibold py-3 px-8 rounded-full transition-colors"
+          >
+            Ver mi pedido
+          </button>
           <button
             onClick={() => router.push("/menu")}
             className="bg-card hover:bg-card-hover border border-border text-white font-semibold py-3 px-8 rounded-full transition-colors"

@@ -291,7 +291,7 @@ export default function MenuPage() {
             <span className="text-sm text-white">{customerName}</span>
             {lastOrderId && (
               <button
-                onClick={() => router.push(`/order/${lastOrderId}`)}
+                onClick={() => router.push("/orders")}
                 className="text-sm text-primary hover:text-primary-hover transition-colors ml-auto"
               >
                 Ver mi pedido
