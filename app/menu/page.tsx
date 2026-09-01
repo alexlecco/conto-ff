@@ -165,6 +165,16 @@ export default function MenuPage() {
 
       setCustomerName(user.user_metadata?.full_name || user.email?.split("@")[0] || "Cliente");
 
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("user_type")
+        .eq("id", user.id)
+        .single();
+
+      if (profile) {
+        localStorage.setItem("user_type", profile.user_type);
+      }
+
       const savedTable = localStorage.getItem("table_number");
       if (savedTable) {
         setTableNumber(parseInt(savedTable, 10));
