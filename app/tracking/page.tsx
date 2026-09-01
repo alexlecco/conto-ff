@@ -95,6 +95,31 @@ export default function TrackingPage() {
 
   useEffect(() => {
     if (!supabase) return;
+
+    const fetchOrders = async () => {
+      const { data: ordersData } = await supabase
+        .from("orders")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (ordersData) {
+        const ordersWithItems = await Promise.all(
+          ordersData.map(async (order) => {
+            const { data: items } = await supabase
+              .from("order_items")
+              .select("*")
+              .eq("order_id", order.id);
+            return { ...order, items: items || [] };
+          })
+        );
+        setOrders(ordersWithItems);
+      }
+    };
+
+    fetchOrders();
+
+    const pollInterval = setInterval(fetchOrders, 5000);
+
     const channel = supabase
       .channel("tracking-changes")
       .on(
@@ -131,6 +156,7 @@ export default function TrackingPage() {
       .subscribe();
 
     return () => {
+      clearInterval(pollInterval);
       supabase.removeChannel(channel);
     };
   }, [supabase]);

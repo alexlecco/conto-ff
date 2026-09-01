@@ -105,6 +105,32 @@ export default function ComandaPage() {
 
   useEffect(() => {
     if (!supabase) return;
+
+    const fetchOrders = async () => {
+      const { data: ordersData } = await supabase
+        .from("orders")
+        .select("*")
+        .neq("status", "delivered")
+        .order("created_at", { ascending: true });
+
+      if (ordersData) {
+        const ordersWithItems = await Promise.all(
+          ordersData.map(async (order) => {
+            const { data: items } = await supabase
+              .from("order_items")
+              .select("*")
+              .eq("order_id", order.id);
+            return { ...order, items: items || [] };
+          })
+        );
+        setOrders(ordersWithItems);
+      }
+    };
+
+    fetchOrders();
+
+    const pollInterval = setInterval(fetchOrders, 5000);
+
     const channel = supabase
       .channel("comanda-changes")
       .on(
@@ -156,6 +182,7 @@ export default function ComandaPage() {
       .subscribe();
 
     return () => {
+      clearInterval(pollInterval);
       supabase.removeChannel(channel);
     };
   }, [supabase]);
