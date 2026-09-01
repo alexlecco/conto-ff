@@ -1,0 +1,888 @@
+{
+  "conto": {
+    "version": "1.0.0",
+    "settings": {
+      "currency": {
+        "baseCurrency": "ARS",
+        "exchangeRates": {
+          "USD": {
+            "currency": "USD",
+            "name": "Dólar estadounidense",
+            "rateToBase": 1500,
+            "enabled": true
+          },
+          "EUR": {
+            "currency": "EUR",
+            "name": "Euro",
+            "rateToBase": null,
+            "enabled": false
+          },
+          "BRL": {
+            "currency": "BRL",
+            "name": "Real brasileño",
+            "rateToBase": null,
+            "enabled": false
+          }
+        },
+        "profiles": {
+          "default": {
+            "name": "Configuración estándar",
+            "inheritGlobal": true,
+            "enabledCurrencies": ["ARS", "USD"]
+          },
+          "tourist": {
+            "name": "Perfil turístico",
+            "inheritGlobal": true,
+            "enabledCurrencies": ["ARS", "USD", "EUR", "BRL"]
+          },
+          "local": {
+            "name": "Solo moneda local",
+            "inheritGlobal": false,
+            "enabledCurrencies": ["ARS"]
+          }
+        }
+      }
+    },
+    "bars": [
+      {
+        "id": "bar-01-qua",
+        "code": "QUA",
+        "name": "Quates",
+        "description": "Cantina Mexicana al Paso",
+        "logo": null,
+        "coverImage": null,
+        "contact": {
+          "address": null,
+          "phone": null,
+          "instagram": "@quates.barrionorte"
+        },
+        "isOpen": true,
+        "currencySettings": {
+          "inheritGlobal": true,
+          "profile": "default",
+          "enabledCurrencies": ["ARS", "USD"]
+        },
+        "menu": {
+          "categories": []
+        }
+      },
+      {
+        "id": "bar-02-pin",
+        "code": "PIN",
+        "name": "Pinta Tacos",
+        "description": null,
+        "logo": null,
+        "coverImage": null,
+        "contact": {
+          "address": null,
+          "phone": null,
+          "instagram": "@pintatacos1347"
+        },
+        "isOpen": true,
+        "currencySettings": {
+          "inheritGlobal": true,
+          "profile": "default",
+          "enabledCurrencies": ["ARS", "USD"]
+        },
+        "menu": {
+          "categories": [
+            {
+              "id": "especialidades-de-la-casa",
+              "name": "Especialidades de la Casa",
+              "items": [
+                {
+                  "id": "chiles-enogada",
+                  "name": "Chiles Enogada",
+                  "description": "Chile relleno de res o pollo con cebolla, puerro, pimiento y crema.",
+                  "price": 19000,
+                  "currency": "ARS",
+                  "available": true
+                },
+                {
+                  "id": "pizza-mexicana",
+                  "name": "Pizza Mexicana",
+                  "description": "Salsa, queso, carnes salteadas, choclo, guacamole.",
+                  "price": 20000,
+                  "currency": "ARS",
+                  "available": true
+                },
+                {
+                  "id": "mexicanos-a-la-pinta-tacos",
+                  "name": "Mexicanos a la Pinta Tacos",
+                  "description": "Con papas.",
+                  "price": 20000,
+                  "currency": "ARS",
+                  "available": true
+                },
+                {
+                  "id": "pizza-tacos",
+                  "name": "Pizza Tacos",
+                  "description": "Salsa, queso, carnes salteadas, choclo.",
+                  "price": 20000,
+                  "currency": "ARS",
+                  "available": true
+                },
+                {
+                  "id": "quesadillas-pinta",
+                  "name": "Quesadillas",
+                  "description": "Queso, tuco, cerdo, carne y pollo.",
+                  "price": 6000,
+                  "currency": "ARS",
+                  "available": true
+                },
+                {
+                  "id": "mila-chingona",
+                  "name": "Mila Chingona para 2 personas",
+                  "description": "Queso, jamón, huevo, cebollas y papas.",
+                  "price": 12000,
+                  "currency": "ARS",
+                  "available": true
+                }
+              ]
+            },
+            {
+              "id": "picada-fria-o-caliente",
+              "name": "Picada Fría o Caliente",
+              "items": [
+                {
+                  "id": "picada-para-2",
+                  "name": "Para 2 personas",
+                  "variants": [
+                    {
+                      "id": "picada-para-2-opcion-1",
+                      "name": "Opción 1",
+                      "price": 10000,
+                      "currency": "ARS"
+                    },
+                    {
+                      "id": "picada-para-2-opcion-2",
+                      "name": "Opción 2",
+                      "price": 15000,
+                      "currency": "ARS"
+                    }
+                  ],
+                  "available": true
+                },
+                {
+                  "id": "picada-para-4",
+                  "name": "Para 4 personas",
+                  "variants": [
+                    {
+                      "id": "picada-para-4-opcion-1",
+                      "name": "Opción 1",
+                      "price": 20000,
+                      "currency": "ARS"
+                    },
+                    {
+                      "id": "picada-para-4-opcion-2",
+                      "name": "Opción 2",
+                      "price": 30000,
+                      "currency": "ARS"
+                    }
+                  ],
+                  "available": true
+                }
+              ]
+            },
+            {
+              "id": "tacos",
+              "name": "Tacos",
+              "items": [
+                {
+                  "id": "tacos-pollo",
+                  "name": "Pollo",
+                  "description": "Pollo + choclo, aguacate, arroz, chimi, chiles, mayo y mostaza.",
+                  "price": 4000,
+                  "currency": "ARS",
+                  "available": true
+                },
+                {
+                  "id": "tacos-carne",
+                  "name": "Carne",
+                  "description": "Carne + choclo, aguacate, arroz, chimi, chiles, mayo y mostaza.",
+                  "price": 4000,
+                  "currency": "ARS",
+                  "available": true
+                },
+                {
+                  "id": "tacos-cerdo",
+                  "name": "Cerdo",
+                  "description": "Cerdo + choclo, aguacate, arroz, chimi, chiles, mayo y mostaza.",
+                  "price": 4000,
+                  "currency": "ARS",
+                  "available": true
+                },
+                {
+                  "id": "tacos-vegetarianos",
+                  "name": "Tacos Vegetarianos",
+                  "price": 5000,
+                  "currency": "ARS",
+                  "available": true
+                },
+                {
+                  "id": "tacos-al-pastor",
+                  "name": "Tacos al Pastor",
+                  "description": "Barbacoa y ananá.",
+                  "price": 5000,
+                  "currency": "ARS",
+                  "available": true
+                },
+                {
+                  "id": "tacos-carnitas",
+                  "name": "Carnitas",
+                  "description": "Carne de res al disco + aderezo.",
+                  "price": 5000,
+                  "currency": "ARS",
+                  "available": true
+                },
+                {
+                  "id": "tacos-cochinita-pibil",
+                  "name": "Cochinita Pibil",
+                  "description": "Carne de cerdo al horno al ajillo.",
+                  "price": 5000,
+                  "currency": "ARS",
+                  "available": true
+                },
+                {
+                  "id": "burritos-pinta",
+                  "name": "Burritos",
+                  "description": "De carne, pollo, cerdo + agregados al gusto.",
+                  "price": 9000,
+                  "currency": "ARS",
+                  "available": true
+                }
+              ]
+            },
+            {
+              "id": "pizzas",
+              "name": "Pizzas",
+              "items": [
+                {
+                  "id": "pizza-comun",
+                  "name": "Común",
+                  "price": 10500,
+                  "currency": "ARS",
+                  "available": true
+                },
+                {
+                  "id": "pizza-especial",
+                  "name": "Especial",
+                  "price": 12000,
+                  "currency": "ARS",
+                  "available": true
+                },
+                {
+                  "id": "pizza-calabresa",
+                  "name": "Calabresa",
+                  "price": 12000,
+                  "currency": "ARS",
+                  "available": true
+                },
+                {
+                  "id": "pizza-napolitana",
+                  "name": "Napolitana",
+                  "price": 12000,
+                  "currency": "ARS",
+                  "available": true
+                },
+                {
+                  "id": "pizza-fugazzeta",
+                  "name": "Fugazzeta",
+                  "price": 12000,
+                  "currency": "ARS",
+                  "available": true
+                }
+              ]
+            },
+            {
+              "id": "empanadas",
+              "name": "Empanadas",
+              "items": [
+                {
+                  "id": "empanada-pollo-y-carne",
+                  "name": "Pollo y carne",
+                  "variants": [
+                    {
+                      "id": "empanada-pollo-y-carne-opcion-1",
+                      "name": "Opción 1",
+                      "price": 2600,
+                      "currency": "ARS"
+                    },
+                    {
+                      "id": "empanada-pollo-y-carne-opcion-2",
+                      "name": "Opción 2",
+                      "price": 2500,
+                      "currency": "ARS"
+                    }
+                  ],
+                  "available": true
+                }
+              ]
+            },
+            {
+              "id": "milanesas",
+              "name": "Milanesas",
+              "items": [
+                {
+                  "id": "milanesa-comun-especial",
+                  "name": "Milanesas común/esp.",
+                  "variants": [
+                    {
+                      "id": "milanesa-comun",
+                      "name": "Común",
+                      "price": 7500,
+                      "currency": "ARS"
+                    },
+                    {
+                      "id": "milanesa-especial",
+                      "name": "Especial",
+                      "price": 8500,
+                      "currency": "ARS"
+                    }
+                  ],
+                  "available": true
+                },
+                {
+                  "id": "milanesa-super-especial",
+                  "name": "Milanesa super especial",
+                  "description": "Con papas.",
+                  "price": 9500,
+                  "currency": "ARS",
+                  "available": true
+                },
+                {
+                  "id": "hamburguesa-comun-especial",
+                  "name": "Hamburguesas común/esp.",
+                  "variants": [
+                    {
+                      "id": "hamburguesa-comun",
+                      "name": "Común",
+                      "price": 7500,
+                      "currency": "ARS"
+                    },
+                    {
+                      "id": "hamburguesa-especial",
+                      "name": "Especial",
+                      "price": 8500,
+                      "currency": "ARS"
+                    }
+                  ],
+                  "available": true
+                },
+                {
+                  "id": "hamburguesa-super-especial",
+                  "name": "Hamburguesa super especial",
+                  "description": "Con papas.",
+                  "price": 9500,
+                  "currency": "ARS",
+                  "available": true
+                },
+                {
+                  "id": "porcion-papas-cheddar",
+                  "name": "Porción de papas con cheddar",
+                  "price": 8000,
+                  "currency": "ARS",
+                  "available": true
+                },
+                {
+                  "id": "porcion-nachos-salsa",
+                  "name": "Porción de nachos con salsa",
+                  "price": 4000,
+                  "currency": "ARS",
+                  "available": true
+                }
+              ]
+            },
+            {
+              "id": "bebidas-frias",
+              "name": "Bebidas Frías",
+              "items": [
+                {
+                  "id": "limonada",
+                  "name": "Limonada",
+                  "price": 6000,
+                  "currency": "ARS",
+                  "available": true
+                },
+                {
+                  "id": "limonada-menta-jengibre",
+                  "name": "Limonada menta y jengibre",
+                  "price": 7000,
+                  "currency": "ARS",
+                  "available": true
+                },
+                {
+                  "id": "jugo-naranja",
+                  "name": "Jugo de naranja",
+                  "price": 7000,
+                  "currency": "ARS",
+                  "available": true
+                },
+                {
+                  "id": "jugo-naranja-mango",
+                  "name": "Jugo de naranja y mango",
+                  "price": 7000,
+                  "currency": "ARS",
+                  "available": true
+                },
+                {
+                  "id": "aguas-gas-sin-gas",
+                  "name": "Aguas con gas y sin gas",
+                  "variants": [
+                    {
+                      "id": "agua-sin-gas",
+                      "name": "Sin gas",
+                      "price": 3000,
+                      "currency": "ARS"
+                    },
+                    {
+                      "id": "agua-con-gas",
+                      "name": "Con gas",
+                      "price": 3500,
+                      "currency": "ARS"
+                    }
+                  ],
+                  "available": true
+                }
+              ]
+            },
+            {
+              "id": "gaseosas",
+              "name": "Gaseosas",
+              "items": [
+                {
+                  "id": "coca",
+                  "name": "Coca 350ml / 1lt.",
+                  "variants": [
+                    {
+                      "id": "coca-350ml",
+                      "name": "350ml",
+                      "price": 4000,
+                      "currency": "ARS"
+                    },
+                    {
+                      "id": "coca-1lt",
+                      "name": "1lt.",
+                      "price": 6000,
+                      "currency": "ARS"
+                    }
+                  ],
+                  "available": true
+                },
+                {
+                  "id": "sprite",
+                  "name": "Sprite 350ml / 1lt.",
+                  "variants": [
+                    {
+                      "id": "sprite-350ml",
+                      "name": "350ml",
+                      "price": 4000,
+                      "currency": "ARS"
+                    },
+                    {
+                      "id": "sprite-1lt",
+                      "name": "1lt.",
+                      "price": 6000,
+                      "currency": "ARS"
+                    }
+                  ],
+                  "available": true
+                },
+                {
+                  "id": "fanta",
+                  "name": "Fanta 350ml / 1lt.",
+                  "variants": [
+                    {
+                      "id": "fanta-350ml",
+                      "name": "350ml",
+                      "price": 4000,
+                      "currency": "ARS"
+                    },
+                    {
+                      "id": "fanta-1lt",
+                      "name": "1lt.",
+                      "price": 6000,
+                      "currency": "ARS"
+                    }
+                  ],
+                  "available": true
+                }
+              ]
+            },
+            {
+              "id": "vinos",
+              "name": "Vinos",
+              "items": [
+                {
+                  "id": "cosecha-tardia",
+                  "name": "Cosecha tardía",
+                  "description": "Blanco, Tinto, Rosado.",
+                  "price": 10000,
+                  "currency": "ARS",
+                  "available": true
+                },
+                {
+                  "id": "las-perdices-tinto",
+                  "name": "Las Perdices Tinto",
+                  "price": 10000,
+                  "currency": "ARS",
+                  "available": true
+                },
+                {
+                  "id": "nieto-senetiner",
+                  "name": "Nieto Senetiner",
+                  "description": "Malbec, Cabernet Sauvignon.",
+                  "price": 15000,
+                  "currency": "ARS",
+                  "available": true
+                },
+                {
+                  "id": "dilema-blanco",
+                  "name": "Dilema Blanco",
+                  "price": 10000,
+                  "currency": "ARS",
+                  "available": true
+                }
+              ]
+            },
+            {
+              "id": "cervezas",
+              "name": "Cervezas",
+              "items": [
+                {
+                  "id": "corona",
+                  "name": "Corona",
+                  "variants": [
+                    {
+                      "id": "corona-330ml",
+                      "name": "330ml",
+                      "price": 5000,
+                      "currency": "ARS"
+                    },
+                    {
+                      "id": "corona-710ml",
+                      "name": "710ml",
+                      "price": 10000,
+                      "currency": "ARS"
+                    }
+                  ],
+                  "available": true
+                },
+                {
+                  "id": "heineken",
+                  "name": "Heineken",
+                  "variants": [
+                    {
+                      "id": "heineken-500ml",
+                      "name": "500ml",
+                      "price": 6000,
+                      "currency": "ARS"
+                    },
+                    {
+                      "id": "heineken-1lt",
+                      "name": "1lt.",
+                      "price": 10000,
+                      "currency": "ARS"
+                    }
+                  ],
+                  "available": true
+                },
+                {
+                  "id": "quilmes",
+                  "name": "Quilmes",
+                  "variants": [
+                    {
+                      "id": "quilmes-340ml",
+                      "name": "340ml",
+                      "price": 4000,
+                      "currency": "ARS"
+                    },
+                    {
+                      "id": "quilmes-1lt",
+                      "name": "1lt.",
+                      "price": 9000,
+                      "currency": "ARS"
+                    }
+                  ],
+                  "available": true
+                },
+                {
+                  "id": "ipa",
+                  "name": "Ipa",
+                  "variants": [
+                    {
+                      "id": "ipa-500ml",
+                      "name": "500ml",
+                      "price": 6000,
+                      "currency": "ARS"
+                    },
+                    {
+                      "id": "ipa-1lt",
+                      "name": "1lt.",
+                      "price": 9000,
+                      "currency": "ARS"
+                    }
+                  ],
+                  "available": true
+                },
+                {
+                  "id": "golden",
+                  "name": "Golden",
+                  "variants": [
+                    {
+                      "id": "golden-500ml",
+                      "name": "500ml",
+                      "price": 6000,
+                      "currency": "ARS"
+                    },
+                    {
+                      "id": "golden-1lt",
+                      "name": "1lt.",
+                      "price": 9000,
+                      "currency": "ARS"
+                    }
+                  ],
+                  "available": true
+                },
+                {
+                  "id": "stella",
+                  "name": "Stella",
+                  "variants": [
+                    {
+                      "id": "stella-500ml",
+                      "name": "500ml",
+                      "price": 6000,
+                      "currency": "ARS"
+                    },
+                    {
+                      "id": "stella-1lt",
+                      "name": "1lt.",
+                      "price": 9500,
+                      "currency": "ARS"
+                    }
+                  ],
+                  "available": true
+                },
+                {
+                  "id": "salta-negra",
+                  "name": "Salta negra",
+                  "variants": [
+                    {
+                      "id": "salta-negra-500ml",
+                      "name": "500ml",
+                      "price": 6000,
+                      "currency": "ARS"
+                    },
+                    {
+                      "id": "salta-negra-1lt",
+                      "name": "1lt.",
+                      "price": 9500,
+                      "currency": "ARS"
+                    }
+                  ],
+                  "available": true
+                }
+              ]
+            },
+            {
+              "id": "tragos",
+              "name": "Tragos",
+              "items": [
+                {
+                  "id": "laguna-azul",
+                  "name": "Laguna azul",
+                  "description": "Curazao azul, 1 oz de vodka, jugo de limón.",
+                  "price": 6000,
+                  "currency": "ARS",
+                  "available": true
+                },
+                {
+                  "id": "amazonas",
+                  "name": "Amazonas",
+                  "description": "Jugo de limón, kiwi, vodka.",
+                  "price": 6000,
+                  "currency": "ARS",
+                  "available": true
+                },
+                {
+                  "id": "durango",
+                  "name": "Durango",
+                  "description": "Durazno, jugo de naranja, vodka, limón.",
+                  "price": 6500,
+                  "currency": "ARS",
+                  "available": true
+                },
+                {
+                  "id": "rose",
+                  "name": "Rose",
+                  "description": "Pomelo rosado, vodka, almíbar de azúcar, frutos rojos.",
+                  "price": 6000,
+                  "currency": "ARS",
+                  "available": true
+                },
+                {
+                  "id": "banana-loca",
+                  "name": "Banana loca",
+                  "description": "Ron blanco, whisky, licor de banana, café conak, almíbar.",
+                  "price": 6000,
+                  "currency": "ARS",
+                  "available": true
+                },
+                {
+                  "id": "noche-buena",
+                  "name": "Noche buena",
+                  "description": "Frutilla, vodka, tequila, frutos rojos, jugo de naranja, almíbar.",
+                  "price": 6000,
+                  "currency": "ARS",
+                  "available": true
+                },
+                {
+                  "id": "gin-tonic",
+                  "name": "Gin tonic",
+                  "description": "Limón / frutilla / naranja / durazno / pomelo / frutos rojos.",
+                  "price": 6000,
+                  "currency": "ARS",
+                  "available": true
+                },
+                {
+                  "id": "daiquiris",
+                  "name": "Daiquiris",
+                  "description": "Limón / naranja / pomelo / frutilla / durazno / frutos rojos.",
+                  "price": 6000,
+                  "currency": "ARS",
+                  "available": true
+                }
+              ]
+            },
+            {
+              "id": "medidas",
+              "name": "Medidas",
+              "items": [
+                {
+                  "id": "tequila-cornavaca",
+                  "name": "Tequila Cornavaca",
+                  "price": 4000,
+                  "currency": "ARS",
+                  "available": true
+                },
+                {
+                  "id": "sol-azteca",
+                  "name": "Sol Azteca",
+                  "price": 4000,
+                  "currency": "ARS",
+                  "available": true
+                },
+                {
+                  "id": "jose-cuervo",
+                  "name": "Jose Cuervo",
+                  "price": 7000,
+                  "currency": "ARS",
+                  "available": true
+                },
+                {
+                  "id": "fernet",
+                  "name": "Fernet",
+                  "price": 6000,
+                  "currency": "ARS",
+                  "available": true
+                },
+                {
+                  "id": "whisky",
+                  "name": "Whisky",
+                  "price": 5000,
+                  "currency": "ARS",
+                  "available": true
+                },
+                {
+                  "id": "martini",
+                  "name": "Martini",
+                  "price": 5000,
+                  "currency": "ARS",
+                  "available": true
+                }
+              ]
+            },
+            {
+              "id": "postres",
+              "name": "Postres",
+              "items": [
+                {
+                  "id": "choco-torta",
+                  "name": "Choco torta",
+                  "price": 4000,
+                  "currency": "ARS",
+                  "available": true
+                },
+                {
+                  "id": "durazno-con-crema",
+                  "name": "Durazno con Crema",
+                  "price": null,
+                  "currency": "ARS",
+                  "available": false
+                },
+                {
+                  "id": "cayote-con-nuez",
+                  "name": "Cayote con Nuez",
+                  "price": null,
+                  "currency": "ARS",
+                  "available": false
+                },
+                {
+                  "id": "copa-helada",
+                  "name": "Copa Helada",
+                  "price": null,
+                  "currency": "ARS",
+                  "available": false
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": "bar-03-yag",
+        "code": "YAG",
+        "name": "El Bajón del Yagi",
+        "description": null,
+        "logo": null,
+        "coverImage": null,
+        "contact": {
+          "address": null,
+          "phone": null,
+          "instagram": null
+        },
+        "isOpen": false,
+        "currencySettings": {
+          "inheritGlobal": true,
+          "profile": "default",
+          "enabledCurrencies": ["ARS", "USD"]
+        },
+        "menu": {
+          "categories": []
+        }
+      },
+      {
+        "id": "bar-04-bor",
+        "code": "BOR",
+        "name": "Boris",
+        "description": null,
+        "logo": null,
+        "coverImage": null,
+        "contact": {
+          "address": null,
+          "phone": null,
+          "instagram": null
+        },
+        "isOpen": false,
+        "currencySettings": {
+          "inheritGlobal": true,
+          "profile": "default",
+          "enabledCurrencies": ["ARS", "USD"]
+        },
+        "menu": {
+          "categories": []
+        }
+      }
+    ]
+  }
+}
