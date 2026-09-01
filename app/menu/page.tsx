@@ -149,6 +149,10 @@ export default function MenuPage() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [activeCategory, setActiveCategory] = useState<string>("");
   const [loading, setLoading] = useState(true);
+  const [customerName, setCustomerName] = useState("");
+  const [tableNumber, setTableNumber] = useState<number>(0);
+  const [showTableModal, setShowTableModal] = useState(false);
+  const [newTableInput, setNewTableInput] = useState("");
 
   useEffect(() => {
     const loadMenu = async () => {
@@ -156,6 +160,13 @@ export default function MenuPage() {
       if (!user) {
         router.push("/login");
         return;
+      }
+
+      setCustomerName(user.user_metadata?.full_name || user.email?.split("@")[0] || "Cliente");
+
+      const savedTable = localStorage.getItem("table_number");
+      if (savedTable) {
+        setTableNumber(parseInt(savedTable, 10));
       }
 
       const savedCart = localStorage.getItem("cart");
@@ -201,6 +212,18 @@ export default function MenuPage() {
     0
   );
 
+  const handleTableChange = () => {
+    const num = parseInt(newTableInput, 10);
+    if (num >= 1 && num <= 100) {
+      setTableNumber(num);
+      localStorage.setItem("table_number", String(num));
+      setShowTableModal(false);
+      setNewTableInput("");
+    }
+  };
+
+  const lastOrderId = typeof window !== "undefined" ? localStorage.getItem("last_order_id") : null;
+
   const getItemQuantity = (productId: string, variantId?: string) => {
     return cart
       .filter(
@@ -222,23 +245,43 @@ export default function MenuPage() {
   return (
     <div className="min-h-screen bg-background pb-24">
       <div className="sticky top-0 z-40 bg-background border-b border-border">
-        <div className="px-4 py-4 flex items-center justify-between">
-          <div>
+        <div className="px-4 py-4">
+          <div className="flex items-center justify-between">
             <h1 className="text-xl font-bold text-white">Pinta Tacos</h1>
-            <p className="text-sm text-muted">
-              Mesa {localStorage.getItem("table_number") || "?"}
-            </p>
+            <button
+              onClick={async () => {
+                await supabase.auth.signOut();
+                localStorage.clear();
+                router.push("/login");
+              }}
+              className="text-sm text-muted hover:text-white transition-colors"
+            >
+              Salir
+            </button>
           </div>
-          <button
-            onClick={async () => {
-              await supabase.auth.signOut();
-              localStorage.clear();
-              router.push("/login");
-            }}
-            className="text-sm text-muted hover:text-white transition-colors"
-          >
-            Salir
-          </button>
+          <div className="flex items-center gap-3 mt-1">
+            <button
+              onClick={() => {
+                setNewTableInput(String(tableNumber));
+                setShowTableModal(true);
+              }}
+              className="text-sm text-muted hover:text-white transition-colors flex items-center gap-1"
+            >
+              <span>Mesa {tableNumber || "?"}</span>
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+              </svg>
+            </button>
+            <span className="text-sm text-white">{customerName}</span>
+            {lastOrderId && (
+              <button
+                onClick={() => router.push(`/order/${lastOrderId}`)}
+                className="text-sm text-primary hover:text-primary-hover transition-colors ml-auto"
+              >
+                Ver mi pedido
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="flex gap-2 px-4 pb-3 overflow-x-auto scrollbar-none">
@@ -306,6 +349,44 @@ export default function MenuPage() {
             </span>
             <span className="text-lg">{formatPrice(subtotal)}</span>
           </button>
+        </div>
+      )}
+
+      {showTableModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-sm bg-card rounded-2xl p-6 space-y-4">
+            <h3 className="text-lg font-semibold text-white text-center">Cambiar mesa</h3>
+            <input
+              type="number"
+              value={newTableInput}
+              onChange={(e) => setNewTableInput(e.target.value)}
+              placeholder="Número de mesa"
+              min="1"
+              max="100"
+              className="w-full text-center text-3xl font-bold bg-background border border-border rounded-xl py-4 px-4 text-white placeholder-muted/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleTableChange();
+              }}
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowTableModal(false);
+                  setNewTableInput("");
+                }}
+                className="flex-1 bg-border/50 hover:bg-border text-white font-medium py-3 px-4 rounded-xl transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleTableChange}
+                className="flex-1 bg-primary hover:bg-primary-hover text-white font-medium py-3 px-4 rounded-xl transition-colors"
+              >
+                Confirmar
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
