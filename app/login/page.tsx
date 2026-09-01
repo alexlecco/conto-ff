@@ -32,7 +32,7 @@ export default function LoginPage() {
       provider: "facebook",
       options: {
         redirectTo: `${window.location.origin}/api/auth/callback`,
-        scopes: "email,public_profile,instagram_basic,instagram_manage_messages",
+        scopes: "email,public_profile",
       },
     });
     if (error) {
