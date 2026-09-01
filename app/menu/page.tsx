@@ -153,6 +153,7 @@ export default function MenuPage() {
   const [tableNumber, setTableNumber] = useState<number>(0);
   const [showTableModal, setShowTableModal] = useState(false);
   const [newTableInput, setNewTableInput] = useState("");
+  const [lastOrderId, setLastOrderId] = useState<string | null>(null);
 
   useEffect(() => {
     const loadMenu = async () => {
@@ -172,6 +173,23 @@ export default function MenuPage() {
       const savedCart = localStorage.getItem("cart");
       if (savedCart) {
         setCart(JSON.parse(savedCart));
+      }
+
+      const storedOrderId = localStorage.getItem("last_order_id");
+      if (storedOrderId) {
+        setLastOrderId(storedOrderId);
+        localStorage.removeItem("last_order_id");
+      } else {
+        const { data: lastOrder } = await supabase
+          .from("orders")
+          .select("id")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single();
+        if (lastOrder) {
+          setLastOrderId(lastOrder.id);
+        }
       }
 
       const response = await fetch("/api/menu");
@@ -221,8 +239,6 @@ export default function MenuPage() {
       setNewTableInput("");
     }
   };
-
-  const lastOrderId = typeof window !== "undefined" ? localStorage.getItem("last_order_id") : null;
 
   const getItemQuantity = (productId: string, variantId?: string) => {
     return cart
