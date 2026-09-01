@@ -171,8 +171,17 @@ export default function MenuPage() {
         .eq("id", user.id)
         .single();
 
-      if (profile) {
-        localStorage.setItem("user_type", profile.user_type);
+      const userType = profile?.user_type || "regular";
+      localStorage.setItem("user_type", userType);
+
+      if (userType === "employee") {
+        router.push("/comanda");
+        return;
+      }
+
+      if (userType === "admin") {
+        router.push("/tracking");
+        return;
       }
 
       const savedTable = localStorage.getItem("table_number");

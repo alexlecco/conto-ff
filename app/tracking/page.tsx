@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { formatPrice } from "@/lib/utils";
 
 interface OrderItem {
   id: string;
@@ -34,25 +35,15 @@ const statusColors: Record<string, string> = {
   pending: "bg-yellow-500",
   preparing: "bg-blue-500",
   ready: "bg-green-500",
+  delivered: "bg-gray-500",
 };
 
-const nextStatus: Record<string, string> = {
-  pending: "preparing",
-  preparing: "ready",
-  ready: "delivered",
-};
-
-const nextStatusLabel: Record<string, string> = {
-  pending: "Preparar",
-  preparing: "Marcar listo",
-  ready: "Entregar",
-};
-
-export default function ComandaPage() {
+export default function TrackingPage() {
   const router = useRouter();
   const supabase = createClient();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<string>("all");
 
   useEffect(() => {
     const init = async () => {
@@ -68,9 +59,9 @@ export default function ComandaPage() {
         .eq("id", user.id)
         .single();
 
-      if (!profile || profile.user_type !== "employee") {
-        if (profile?.user_type === "admin") {
-          router.push("/tracking");
+      if (!profile || profile.user_type !== "admin") {
+        if (profile?.user_type === "employee") {
+          router.push("/comanda");
         } else {
           router.push("/menu");
         }
@@ -80,8 +71,7 @@ export default function ComandaPage() {
       const { data: ordersData } = await supabase
         .from("orders")
         .select("*")
-        .neq("status", "delivered")
-        .order("created_at", { ascending: true });
+        .order("created_at", { ascending: false });
 
       if (ordersData) {
         const ordersWithItems = await Promise.all(
@@ -104,43 +94,28 @@ export default function ComandaPage() {
 
   useEffect(() => {
     const channel = supabase
-      .channel("comanda-changes")
+      .channel("tracking-changes")
       .on(
         "postgres_changes",
         {
-          event: "INSERT",
+          event: "*",
           schema: "public",
           table: "orders",
         },
         async (payload) => {
-          const newOrder = payload.new as Order;
-          if (newOrder.status !== "delivered") {
+          if (payload.eventType === "INSERT") {
+            const newOrder = payload.new as Order;
             const { data: items } = await supabase
               .from("order_items")
               .select("*")
               .eq("order_id", newOrder.id);
-            setOrders((prev) => [...prev, { ...newOrder, items: items || [] }]);
-          }
-        }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "orders",
-        },
-        async (payload) => {
-          const updatedOrder = payload.new as Order;
-
-          if (updatedOrder.status === "delivered") {
-            setOrders((prev) => prev.filter((o) => o.id !== updatedOrder.id));
-          } else {
+            setOrders((prev) => [{ ...newOrder, items: items || [] }, ...prev]);
+          } else if (payload.eventType === "UPDATE") {
+            const updatedOrder = payload.new as Order;
             const { data: items } = await supabase
               .from("order_items")
               .select("*")
               .eq("order_id", updatedOrder.id);
-
             setOrders((prev) =>
               prev.map((o) =>
                 o.id === updatedOrder.id
@@ -158,33 +133,31 @@ export default function ComandaPage() {
     };
   }, [supabase]);
 
-  const updateStatus = async (orderId: string, newStatus: string) => {
-    const { error } = await supabase
-      .from("orders")
-      .update({ status: newStatus })
-      .eq("id", orderId);
+  const filteredOrders = filter === "all"
+    ? orders
+    : orders.filter((o) => o.status === filter);
 
-    if (error) {
-      console.error("Error updating order:", error);
-    }
-  };
+  const statusCounts = orders.reduce((acc, order) => {
+    acc[order.status] = (acc[order.status] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#fab76b" }}>
-        <div className="text-white">Cargando comanda...</div>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-muted">Cargando tracking...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen pb-24" style={{ backgroundColor: "#fab76b" }}>
-      <div className="sticky top-0 z-40 border-b border-white/20 px-4 py-4" style={{ backgroundColor: "#fab76b" }}>
+    <div className="min-h-screen bg-background pb-24">
+      <div className="sticky top-0 z-40 bg-background border-b border-border px-4 py-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-white">Comanda</h1>
-            <p className="text-sm text-white/70">
-              {orders.length} {orders.length === 1 ? "pedido activo" : "pedidos activos"}
+            <h1 className="text-xl font-bold text-white">Tracking</h1>
+            <p className="text-sm text-muted">
+              {orders.length} pedidos totales
             </p>
           </div>
           <button
@@ -193,41 +166,67 @@ export default function ComandaPage() {
               localStorage.clear();
               router.push("/login");
             }}
-            className="text-sm text-white/70 hover:text-white transition-colors"
+            className="text-sm text-muted hover:text-white transition-colors"
           >
             Salir
           </button>
         </div>
+
+        <div className="flex gap-2 mt-3 overflow-x-auto scrollbar-none">
+          <button
+            onClick={() => setFilter("all")}
+            className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+              filter === "all"
+                ? "bg-white text-black"
+                : "bg-card text-muted border border-border"
+            }`}
+          >
+            Todos ({orders.length})
+          </button>
+          {Object.entries(statusLabels).map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setFilter(key)}
+              className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                filter === key
+                  ? "bg-white text-black"
+                  : "bg-card text-muted border border-border"
+              }`}
+            >
+              {label} ({statusCounts[key] || 0})
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="px-4 py-4">
-        {orders.length === 0 ? (
+        {filteredOrders.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-white/70 text-lg">No hay pedidos activos</p>
+            <p className="text-muted">No hay pedidos</p>
           </div>
         ) : (
-          <div className="flex flex-col" style={{ gap: "20px" }}>
-            {orders.map((order) => (
+          <div className="flex flex-col" style={{ gap: "16px" }}>
+            {filteredOrders.map((order) => (
               <div
                 key={order.id}
-                className="rounded-xl bg-white overflow-hidden shadow-lg"
+                className="rounded-xl bg-card border border-border overflow-hidden"
               >
-                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-border">
                   <div className="flex items-center gap-2">
                     <div
                       className={`w-3 h-3 rounded-full ${
-                        statusColors[order.status] || "bg-gray-400"
+                        statusColors[order.status] || "bg-gray-500"
                       }`}
                     />
-                    <span className="font-semibold text-gray-900">
+                    <span className="font-semibold text-white">
                       {statusLabels[order.status]}
                     </span>
                   </div>
                   <div className="text-right">
-                    <span className="font-bold text-gray-900">
+                    <span className="font-bold text-white">
                       Mesa {order.table_number}
                     </span>
-                    <span className="text-xs text-gray-500 block">
+                    <span className="text-xs text-muted block">
                       {new Date(order.created_at).toLocaleTimeString("es-AR", {
                         hour: "2-digit",
                         minute: "2-digit",
@@ -237,43 +236,34 @@ export default function ComandaPage() {
                 </div>
 
                 <div className="px-4 py-3">
-                  <p className="text-sm text-gray-500 mb-2">{order.customer_name}</p>
+                  <p className="text-sm text-muted mb-2">{order.customer_name}</p>
                   <div className="space-y-1">
                     {order.items.map((item) => (
                       <div
                         key={item.id}
                         className="flex items-center justify-between"
                       >
-                        <span className="text-gray-900">
+                        <span className="text-white">
                           {item.quantity}x {item.product_name}
                           {item.variant_name && (
-                            <span className="text-gray-500 text-sm ml-1">
+                            <span className="text-muted text-sm ml-1">
                               ({item.variant_name})
                             </span>
                           )}
+                        </span>
+                        <span className="text-muted text-sm">
+                          {formatPrice(item.subtotal)}
                         </span>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                <div className="px-4 py-3 border-t border-gray-100 bg-gray-50">
-                  <button
-                    onClick={() =>
-                      updateStatus(order.id, nextStatus[order.status])
-                    }
-                    className="w-full py-3 px-4 rounded-xl font-semibold text-white transition-colors"
-                    style={{
-                      backgroundColor:
-                        order.status === "pending"
-                          ? "#3b82f6"
-                          : order.status === "preparing"
-                          ? "#22c55e"
-                          : "#6b7280",
-                    }}
-                  >
-                    {nextStatusLabel[order.status]}
-                  </button>
+                <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-background/50">
+                  <span className="text-sm text-muted">Total</span>
+                  <span className="font-bold text-white">
+                    {formatPrice(order.total)}
+                  </span>
                 </div>
               </div>
             ))}
