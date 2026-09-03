@@ -12,9 +12,8 @@ export default function ConfirmPage() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [tableNumber, setTableNumber] = useState(0);
   const [customerName, setCustomerName] = useState("Cliente");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [ready, setReady] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submissionTime, setSubmissionTime] = useState<Date | null>(null);
 
   useEffect(() => {
     const init = async () => {
@@ -65,7 +64,10 @@ export default function ConfirmPage() {
     });
   };
 
-  const handleConfirm = async () => {
+const handleConfirm = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    setSubmissionTime(new Date());
     setLoading(true);
     setError(null);
 
@@ -96,10 +98,18 @@ export default function ConfirmPage() {
 
       localStorage.removeItem("cart");
       localStorage.setItem("last_order_id", data.order_id);
+      
+      // Keep button disabled for 3 seconds after submission to prevent double-submit
+      const keepDisabled = setTimeout(() => {
+        setIsSubmitting(false);
+        setSubmissionTime(null);
+      }, 3000);
+      
       router.push("/sent");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al enviar el pedido");
-      setLoading(false);
+      setIsSubmitting(false);
+      setSubmissionTime(null);
     }
   };
 
@@ -178,13 +188,21 @@ export default function ConfirmPage() {
             <p className="text-sm text-center text-red-400">{error}</p>
           )}
 
-          <button
-            onClick={handleConfirm}
-            disabled={loading || cart.length === 0}
-            className="w-full bg-primary hover:bg-primary-hover text-white font-semibold py-4 px-6 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loading ? "Enviando..." : "Confirmar pedido"}
-          </button>
+          {isSubmitting ? (
+            <p className="text-sm text-center text-green-400">Pedido enviado</p>
+          ) : (
+            <button
+              onClick={handleConfirm}
+              disabled={isSubmitting || cart.length === 0}
+              className="w-full bg-primary hover:bg-primary-hover text-white font-semibold py-4 px-6 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSubmitting ? "Enviando..." : "Confirmar pedido"}
+            </button>
+          )}
+
+          {submissionTime && !isSubmitting && (
+            <p className="text-sm text-center text-green-400 mt-2">Pedido enviado hace instantes</p>
+          )}
         </div>
       </div>
     </div>
