@@ -35,8 +35,6 @@ export default function ConfirmPage() {
           user.user_metadata?.full_name || user.email?.split("@")[0] || "Cliente"
         );
       }
-
-      setReady(true);
     };
 
     init();
@@ -64,12 +62,10 @@ export default function ConfirmPage() {
     });
   };
 
-const handleConfirm = async () => {
+  const handleConfirm = async () => {
     if (isSubmitting) return;
     setIsSubmitting(true);
     setSubmissionTime(new Date());
-    setLoading(true);
-    setError(null);
 
     try {
       const response = await fetch("/api/orders", {
@@ -88,7 +84,7 @@ const handleConfirm = async () => {
           })),
           total: subtotal,
         }),
-      });
+      };
 
       const data = await response.json();
 
@@ -107,16 +103,15 @@ const handleConfirm = async () => {
       
       router.push("/sent");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al enviar el pedido");
       setIsSubmitting(false);
       setSubmissionTime(null);
     }
   };
 
-  if (!ready) {
+  if (isSubmitting) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-muted">Cargando...</div>
+        <div className="text-muted">Enviando pedido...</div>
       </div>
     );
   }
@@ -124,7 +119,7 @@ const handleConfirm = async () => {
   return (
     <div className="min-h-screen bg-background pb-24">
       <div className="sticky top-0 z-40 bg-background border-b border-border px-4 py-4">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between">
           <button
             onClick={() => router.push("/menu")}
             className="w-10 h-10 flex items-center justify-center rounded-full bg-card border border-border text-muted hover:text-white transition-colors"
@@ -175,34 +170,30 @@ const handleConfirm = async () => {
             </div>
           </div>
         ))}
-      </div>
 
-      <div className="fixed bottom-0 left-0 right-0 z-50 p-4 bg-background border-t border-border">
-        <div className="max-w-lg mx-auto space-y-3">
-          <div className="flex items-center justify-between px-2">
-            <span className="text-muted">Subtotal</span>
-            <span className="text-xl font-bold text-white">{formatPrice(subtotal)}</span>
+        <div className="fixed bottom-0 left-0 right-0 z-50 p-4 bg-background border-t border-border">
+          <div className="max-w-lg mx-auto space-y-3">
+            <div className="flex items-center justify-between px-2">
+              <span className="text-muted">Subtotal</span>
+              <span className="text-xl font-bold text-white">{formatPrice(subtotal)}</span>
+            </div>
+
+            {isSubmitting ? (
+              <p className="text-sm text-center text-green-400">Pedido enviado</p>
+            ) : (
+              <button
+                onClick={handleConfirm}
+                disabled={isSubmitting || cart.length === 0}
+                className="w-full bg-primary hover:bg-primary-hover text-white font-semibold py-4 px-6 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? "Enviando..." : "Confirmar pedido"}
+              </button>
+            )}
+
+            {submissionTime && !isSubmitting && (
+              <p className="text-sm text-center text-green-400 mt-2">Pedido enviado hace instantes</p>
+            )}
           </div>
-
-          {error && (
-            <p className="text-sm text-center text-red-400">{error}</p>
-          )}
-
-          {isSubmitting ? (
-            <p className="text-sm text-center text-green-400">Pedido enviado</p>
-          ) : (
-            <button
-              onClick={handleConfirm}
-              disabled={isSubmitting || cart.length === 0}
-              className="w-full bg-primary hover:bg-primary-hover text-white font-semibold py-4 px-6 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSubmitting ? "Enviando..." : "Confirmar pedido"}
-            </button>
-          )}
-
-          {submissionTime && !isSubmitting && (
-            <p className="text-sm text-center text-green-400 mt-2">Pedido enviado hace instantes</p>
-          )}
         </div>
       </div>
     </div>
