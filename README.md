@@ -1,4 +1,28 @@
+##🚀 Elevator Pitch — Conto
+
+```
+
+“Soy el creador de Conto, una plataforma que conecta a las personas con bares y restaurantes desde su propia mesa.
+
+Ayudamos a los bares a simplificar la experiencia de pedir y, al mismo tiempo, a atraer más clientes y generar más ingresos.
+
+Lo hacemos digitalizando la experiencia completa: el usuario descubre bares, puede reservar, conocer el menú, pedir desde su mesa y, a través de nuestro sistema de gamificación, gana Conto Coins por salir, reservar y consumir.
+
+La idea es generar un círculo virtuoso: motivamos a las personas a salir y descubrir nuevos lugares, y eso se traduce en más clientes y más consumo para los bares que forman parte de Conto.
+
+Lo validé inicialmente con Pinta Tacos, desarrollando una primera versión real del producto.
+
+Me diferencio porque Conto no quiere ser solamente un menú digital o una app para hacer pedidos: queremos ser el puente entre las personas que quieren descubrir dónde salir y los bares que quieren atraer, conocer y fidelizar a sus clientes.
+
+Y quienes pagarían por esto son los bares y restaurantes, mediante una suscripción mensual por las herramientas de Conto y los beneficios que genera para su negocio.”**
+
+🎯 Y la frase que yo dejaría como cierre
+
+“Conto convierte las ganas de salir a comer en una experiencia, y esa experiencia en más clientes e ingresos para los bares.”
+```
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+
 
 ## Getting Started
 
