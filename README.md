@@ -2,7 +2,7 @@
 
 ```
 
-“Soy el creador de Conto, una plataforma que conecta a las personas con bares y restaurantes desde su propia mesa.
+“Conto es una plataforma que conecta a las personas con bares y restaurantes desde su propia mesa.
 
 Ayudamos a los bares a simplificar la experiencia de pedir y, al mismo tiempo, a atraer más clientes y generar más ingresos.
 
@@ -16,8 +16,7 @@ Me diferencio porque Conto no quiere ser solamente un menú digital o una app pa
 
 Y quienes pagarían por esto son los bares y restaurantes, mediante una suscripción mensual por las herramientas de Conto y los beneficios que genera para su negocio.”**
 
-🎯 Y la frase que yo dejaría como cierre
-
+resumiendo:
 “Conto convierte las ganas de salir a comer en una experiencia, y esa experiencia en más clientes e ingresos para los bares.”
 ```
 
