@@ -40,6 +40,10 @@ interface RawData {
 
 let cachedMenu: MenuCategory[] | null = null;
 
+export function invalidateMenuCache() {
+  cachedMenu = null;
+}
+
 export function loadPintaTacosMenu(): MenuCategory[] {
   if (cachedMenu) return cachedMenu;
 

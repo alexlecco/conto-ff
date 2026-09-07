@@ -129,8 +129,6 @@ export default function ComandaPage() {
 
     fetchOrders();
 
-    const pollInterval = setInterval(fetchOrders, 5000);
-
     const channel = supabase
       .channel("comanda-changes")
       .on(
@@ -182,13 +180,20 @@ export default function ComandaPage() {
       .subscribe();
 
     return () => {
-      clearInterval(pollInterval);
       supabase.removeChannel(channel);
     };
   }, [supabase]);
 
   const updateStatus = async (orderId: string, newStatus: string) => {
     if (!supabase) return;
+    
+    // Optimistic UI update - change status immediately
+    setOrders((prev) =>
+      prev.map((o) =>
+        o.id === orderId ? { ...o, status: newStatus } : o
+      )
+    );
+
     const { error } = await supabase
       .from("orders")
       .update({ status: newStatus })
@@ -196,6 +201,19 @@ export default function ComandaPage() {
 
     if (error) {
       console.error("Error updating order:", error);
+      // Revert on error
+      const { data: order } = await supabase
+        .from("orders")
+        .select("*")
+        .eq("id", orderId)
+        .single();
+      if (order) {
+        setOrders((prev) =>
+          prev.map((o) =>
+            o.id === orderId ? { ...o, status: order.status } : o
+          )
+        );
+      }
     }
   };
 

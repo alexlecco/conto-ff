@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSupabase } from "@/lib/supabase/use-client";
 
@@ -8,8 +8,46 @@ export default function CheckinPage() {
   const router = useRouter();
   const supabase = useSupabase();
   const [tableNumber, setTableNumber] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [userType, setUserType] = useState<string | null>(null);
+
+  useEffect(() => {
+    const checkUser = async () => {
+      if (!supabase) return;
+      
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        router.push("/login");
+        return;
+      }
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("user_type")
+        .eq("id", user.id)
+        .single();
+
+      const type = profile?.user_type || "regular";
+      setUserType(type);
+      localStorage.setItem("user_type", type);
+
+      if (type === "employee") {
+        router.push("/comanda");
+        return;
+      }
+
+      if (type === "admin") {
+        router.push("/tracking");
+        return;
+      }
+
+      setLoading(false);
+    };
+
+    checkUser();
+  }, [router, supabase]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,25 +70,6 @@ export default function CheckinPage() {
       return;
     }
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("user_type")
-      .eq("id", user.id)
-      .single();
-
-    const userType = profile?.user_type || "regular";
-    localStorage.setItem("user_type", userType);
-
-    if (userType === "employee") {
-      router.push("/comanda");
-      return;
-    }
-
-    if (userType === "admin") {
-      router.push("/tracking");
-      return;
-    }
-
     const { error: insertError } = await supabase.from("check_ins").insert({
       user_id: user.id,
       table_number: num,
@@ -67,6 +86,14 @@ export default function CheckinPage() {
 
     router.push("/menu");
   };
+
+  if (loading && userType === null) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-muted">Cargando...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-background px-6">

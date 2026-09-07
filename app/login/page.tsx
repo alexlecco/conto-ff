@@ -52,12 +52,12 @@ export default function LoginPage() {
     <div className="min-h-screen flex flex-col bg-background">
       <div className="relative h-[50vh] overflow-hidden">
         <div
-          className="absolute inset-0 bg-cover bg-center"
+          className="absolute inset-0 bg-cover bg-center scale-110 blur-sm"
           style={{
-            backgroundImage: "url('/pinta-tacos/hero.jpg')",
+            backgroundImage: "url('/images/mexican-food.jpg')",
           }}
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/50 to-background" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-background/60 to-background" />
         <div className="absolute top-12 left-0 right-0 text-center">
           <h1 className="text-3xl font-bold tracking-tight text-white">
             Conto <span className="text-primary">FF</span>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSupabase } from "@/lib/supabase/use-client";
 import { formatPrice } from "@/lib/utils";
@@ -35,44 +35,15 @@ const statusColors: Record<string, string> = {
   pending: "bg-yellow-500",
   preparing: "bg-blue-500",
   ready: "bg-green-500",
+  delivered: "bg-gray-500",
 };
 
-const playNotificationSound = () => {
-  try {
-    const audioContext = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
-    
-    const playBell = (frequency: number, startTime: number, duration: number) => {
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-      
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-      
-      oscillator.frequency.value = frequency;
-      oscillator.type = "sine";
-      
-      gainNode.gain.setValueAtTime(0.3, startTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
-      
-      oscillator.start(startTime);
-      oscillator.stop(startTime + duration);
-    };
-
-    const now = audioContext.currentTime;
-    playBell(880, now, 0.15);
-    playBell(1100, now + 0.12, 0.15);
-    playBell(880, now + 0.25, 0.2);
-  } catch {
-    // Silently fail if audio is not available
-  }
-};
-
-export default function OrdersPage() {
+export default function OrderHistoryPage() {
   const router = useRouter();
   const supabase = useSupabase();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-  const [lastStatusChange, setLastStatusChange] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string>("all");
 
   useEffect(() => {
     const init = async () => {
@@ -86,7 +57,6 @@ export default function OrdersPage() {
       const { data: ordersData } = await supabase
         .from("orders")
         .select("*")
-        .neq("status", "delivered")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
@@ -109,57 +79,21 @@ export default function OrdersPage() {
     init();
   }, [router, supabase]);
 
-  useEffect(() => {
-    if (!supabase) return;
-    const channel = supabase
-      .channel("orders-changes")
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "orders",
-        },
-        async (payload) => {
-          const updatedOrder = payload.new as Order;
+  const filteredOrders = selectedDate === "all"
+    ? orders
+    : orders.filter((o) => {
+        const orderDate = new Date(o.created_at).toISOString().split("T")[0];
+        return orderDate === selectedDate;
+      });
 
-          if (updatedOrder.status === "delivered") {
-            setOrders((prev) => prev.filter((o) => o.id !== updatedOrder.id));
-            playNotificationSound();
-            setLastStatusChange(`Tu pedido fue entregado`);
-            setTimeout(() => setLastStatusChange(null), 5000);
-          } else {
-            const { data: items } = await supabase
-              .from("order_items")
-              .select("*")
-              .eq("order_id", updatedOrder.id);
+  const dates = [...new Set(orders.map((o) => new Date(o.created_at).toISOString().split("T")[0]))].sort().reverse();
 
-            setOrders((prev) =>
-              prev.map((o) =>
-                o.id === updatedOrder.id
-                  ? { ...updatedOrder, items: items || [] }
-                  : o
-              )
-            );
-            
-            playNotificationSound();
-            const label = statusLabels[updatedOrder.status] || updatedOrder.status;
-            setLastStatusChange(`Tu pedido ahora está: ${label}`);
-            setTimeout(() => setLastStatusChange(null), 5000);
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [supabase]);
+  const totalSpent = filteredOrders.reduce((sum, o) => sum + o.total, 0);
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-muted">Cargando pedidos...</div>
+        <div className="text-muted">Cargando historial...</div>
       </div>
     );
   }
@@ -167,45 +101,60 @@ export default function OrdersPage() {
   return (
     <div className="min-h-screen bg-background pb-24">
       <div className="sticky top-0 z-40 bg-background border-b border-border px-4 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => router.back()}
-              className="w-10 h-10 flex items-center justify-center rounded-full bg-card border border-border text-muted hover:text-white transition-colors"
-            >
-              ←
-            </button>
-            <h1 className="text-lg font-bold text-white">Tu pedido</h1>
-          </div>
+        <div className="flex items-center gap-3">
           <button
-            onClick={() => router.push("/orders/history")}
-            className="text-sm text-primary hover:text-primary-hover transition-colors"
+            onClick={() => router.back()}
+            className="w-10 h-10 flex items-center justify-center rounded-full bg-card border border-border text-muted hover:text-white transition-colors"
           >
-            Historial
+            ←
           </button>
+          <h1 className="text-lg font-bold text-white">Historial de pedidos</h1>
         </div>
       </div>
 
-      {lastStatusChange && (
-        <div className="mx-4 mt-4 p-3 bg-green-500/10 border border-green-500/20 rounded-xl">
-          <p className="text-sm text-green-400 text-center">{lastStatusChange}</p>
-        </div>
-      )}
-
-      <div className="px-4 py-4" style={{ gap: "20px" }}>
-        {orders.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-muted mb-4">No tenés pedidos activos</p>
+      <div className="px-4 py-4">
+        <div className="flex gap-2 overflow-x-auto pb-3 scrollbar-none">
+          <button
+            onClick={() => setSelectedDate("all")}
+            className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+              selectedDate === "all"
+                ? "bg-primary text-white"
+                : "bg-card text-muted border border-border"
+            }`}
+          >
+            Todos ({orders.length})
+          </button>
+          {dates.map((date) => (
             <button
-              onClick={() => router.push("/menu")}
-              className="bg-primary hover:bg-primary-hover text-white font-semibold py-3 px-6 rounded-full transition-colors"
+              key={date}
+              onClick={() => setSelectedDate(date)}
+              className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                selectedDate === date
+                  ? "bg-primary text-white"
+                  : "bg-card text-muted border border-border"
+              }`}
             >
-              Ir al menú
+              {new Date(date + "T12:00:00").toLocaleDateString("es-AR", { day: "numeric", month: "short" })}
             </button>
+          ))}
+        </div>
+
+        <div className="flex items-center justify-between mb-4">
+          <span className="text-sm text-muted">
+            {filteredOrders.length} {filteredOrders.length === 1 ? "pedido" : "pedidos"}
+          </span>
+          <span className="text-sm font-semibold text-white">
+            Total: {formatPrice(totalSpent)}
+          </span>
+        </div>
+
+        {filteredOrders.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-muted">No hay pedidos para esta fecha</p>
           </div>
         ) : (
-          <div className="flex flex-col" style={{ gap: "20px" }}>
-            {orders.map((order) => (
+          <div className="flex flex-col" style={{ gap: "16px" }}>
+            {filteredOrders.map((order) => (
               <div
                 key={order.id}
                 className="rounded-xl bg-card border border-border overflow-hidden"
@@ -226,7 +175,9 @@ export default function OrdersPage() {
                       Mesa {order.table_number}
                     </span>
                     <span className="text-xs text-muted block">
-                      {new Date(order.created_at).toLocaleTimeString("es-AR", {
+                      {new Date(order.created_at).toLocaleDateString("es-AR", {
+                        day: "numeric",
+                        month: "short",
                         hour: "2-digit",
                         minute: "2-digit",
                       })}
@@ -267,15 +218,6 @@ export default function OrdersPage() {
             ))}
           </div>
         )}
-      </div>
-
-      <div className="fixed bottom-0 left-0 right-0 z-50 p-4 bg-background border-t border-border">
-        <button
-          onClick={() => router.push("/menu")}
-          className="w-full max-w-lg mx-auto bg-card hover:bg-card-hover border border-border text-white font-semibold py-4 px-6 rounded-full transition-colors"
-        >
-          Volver al menú
-        </button>
       </div>
     </div>
   );
