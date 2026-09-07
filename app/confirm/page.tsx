@@ -84,7 +84,7 @@ export default function ConfirmPage() {
           })),
           total: subtotal,
         }),
-      };
+      });
 
       const data = await response.json();
 

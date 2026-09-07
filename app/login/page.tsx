@@ -8,6 +8,13 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const getRedirectUrl = () => {
+    if (typeof window !== "undefined") {
+      return `${window.location.origin}/api/auth/callback`;
+    }
+    return `${process.env.NEXT_PUBLIC_APP_URL || "https://conto-ff.vercel.app"}/api/auth/callback`;
+  };
+
   const handleGoogleLogin = async () => {
     if (!supabase) return;
     setLoading(true);
@@ -15,7 +22,7 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback`,
+        redirectTo: getRedirectUrl(),
       },
     });
     if (error) {
@@ -31,7 +38,7 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "facebook",
       options: {
-        redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback`,
+        redirectTo: getRedirectUrl(),
         scopes: "email,public_profile",
       },
     });
