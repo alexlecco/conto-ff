@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useEffect, useState } from "react";
+import { useCallback, useRef, useEffect } from "react";
 import { useSupabase } from "@/lib/supabase/use-client";
 import type { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
 
