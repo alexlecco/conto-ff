@@ -29,7 +29,7 @@ interface Category {
 export default function AdminMenuPage() {
   const router = useRouter();
   const supabase = useSupabase();
-  const { updateMenuItem, fetchMenu } = useDatabase();
+  const { updateMenuItem, fetchMenu, broadcastMenuUpdate } = useDatabase();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
@@ -87,6 +87,7 @@ export default function AdminMenuPage() {
         variantId
       );
       setCategories(newCategories);
+      broadcastMenuUpdate();
     } catch {
       // Silently fail
     }

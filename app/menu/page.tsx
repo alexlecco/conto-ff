@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSupabase } from "@/lib/supabase/use-client";
+import { useDatabase } from "@/lib/supabase/use-database";
 import type { MenuCategory, MenuItem, MenuItemVariant, CartItem } from "@/types/menu";
 import { formatPrice } from "@/lib/utils";
 
@@ -145,6 +146,7 @@ function MenuItemComponent({
 export default function MenuPage() {
   const router = useRouter();
   const supabase = useSupabase();
+  const { subscribeToMenuUpdates } = useDatabase();
   const [menu, setMenu] = useState<MenuCategory[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [activeCategory, setActiveCategory] = useState<string>("");
@@ -231,6 +233,15 @@ export default function MenuPage() {
 
     return () => clearInterval(interval);
   }, [router, supabase]);
+
+  useEffect(() => {
+    const unsubscribe = subscribeToMenuUpdates(async () => {
+      const response = await fetch(`/api/menu?t=${Date.now()}`);
+      const data = await response.json();
+      setMenu(data);
+    });
+    return unsubscribe;
+  }, [subscribeToMenuUpdates]);
 
   useEffect(() => {
     localStorage.setItem("cart", JSON.stringify(cart));

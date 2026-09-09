@@ -277,6 +277,36 @@ export function useDatabase() {
     return res.json();
   }, []);
 
+  // ─── Menu real-time broadcast ─────────────────────────────────
+
+  const broadcastMenuUpdate = useCallback(() => {
+    if (!supabase) return;
+    const channel = supabase.channel("menu-updates");
+    channel.send({
+      type: "broadcast",
+      event: "menu-changed",
+      payload: { timestamp: Date.now() },
+    });
+  }, [supabase]);
+
+  const subscribeToMenuUpdates = useCallback(
+    (onUpdate: () => void) => {
+      if (!supabase) return () => {};
+
+      const channel = supabase
+        .channel("menu-listener")
+        .on("broadcast", { event: "menu-changed" }, () => {
+          onUpdate();
+        })
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    },
+    [supabase]
+  );
+
   // ─── Cleanup on unmount ───────────────────────────────────────
 
   useEffect(() => {
@@ -295,10 +325,13 @@ export function useDatabase() {
     fetchAllOrders,
     fetchOrderHistory,
     fetchOrderItems,
-    // Real-time
+    // Real-time orders
     subscribeToOrders,
     // Menu
     updateMenuItem,
     fetchMenu,
+    // Menu real-time
+    broadcastMenuUpdate,
+    subscribeToMenuUpdates,
   };
 }
