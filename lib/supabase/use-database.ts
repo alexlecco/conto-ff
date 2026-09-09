@@ -277,6 +277,64 @@ export function useDatabase() {
     return res.json();
   }, []);
 
+  const adminMenuRequest = useCallback(
+    async (body: Record<string, unknown>) => {
+      if (!supabase) throw new Error("Supabase not ready");
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      const res = await fetch("/api/admin/menu", {
+        method: body.type === "create" || body.type === "delete" || body.type === "reorder" ? "POST" : "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error("Failed");
+      const data = await res.json();
+      return data.categories;
+    },
+    [supabase]
+  );
+
+  const bulkUpdateMenu = useCallback(
+    async (
+      updates: {
+        categoryId: string;
+        itemId: string;
+        field: string;
+        value: string | number | boolean | null;
+        variantId?: string;
+      }[]
+    ) => {
+      return adminMenuRequest({ type: "bulk", updates });
+    },
+    [adminMenuRequest]
+  );
+
+  const createMenuItem = useCallback(
+    async (categoryId: string, name: string, description?: string, price?: number) => {
+      return adminMenuRequest({ type: "create", categoryId, name, description, price });
+    },
+    [adminMenuRequest]
+  );
+
+  const deleteMenuItem = useCallback(
+    async (categoryId: string, itemId: string) => {
+      return adminMenuRequest({ type: "delete", categoryId, itemId });
+    },
+    [adminMenuRequest]
+  );
+
+  const reorderMenuItems = useCallback(
+    async (categoryId: string, itemIds: string[]) => {
+      return adminMenuRequest({ type: "reorder", categoryId, itemIds });
+    },
+    [adminMenuRequest]
+  );
+
   // ─── Menu real-time broadcast ─────────────────────────────────
 
   const broadcastMenuUpdate = useCallback(() => {
@@ -329,6 +387,10 @@ export function useDatabase() {
     subscribeToOrders,
     // Menu
     updateMenuItem,
+    bulkUpdateMenu,
+    createMenuItem,
+    deleteMenuItem,
+    reorderMenuItems,
     fetchMenu,
     // Menu real-time
     broadcastMenuUpdate,

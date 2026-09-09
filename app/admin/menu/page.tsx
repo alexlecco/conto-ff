@@ -26,14 +26,34 @@ interface Category {
   items: Item[];
 }
 
+type PendingChange = {
+  categoryId: string;
+  itemId: string;
+  field: string;
+  value: string | number | boolean | null;
+  variantId?: string;
+};
+
 export default function AdminMenuPage() {
   const router = useRouter();
   const supabase = useSupabase();
-  const { updateMenuItem, fetchMenu, broadcastMenuUpdate } = useDatabase();
+  const {
+    updateMenuItem,
+    bulkUpdateMenu,
+    createMenuItem,
+    deleteMenuItem,
+    reorderMenuItems,
+    fetchMenu,
+    broadcastMenuUpdate,
+  } = useDatabase();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState<string | null>(null);
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
+  const [pendingChanges, setPendingChanges] = useState<PendingChange[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [showAddItem, setShowAddItem] = useState<string | null>(null);
+  const [newItemName, setNewItemName] = useState("");
+  const [newItemPrice, setNewItemPrice] = useState("");
 
   const loadMenu = useCallback(async () => {
     const data = await fetchMenu();
@@ -68,31 +88,144 @@ export default function AdminMenuPage() {
     init();
   }, [router, supabase, loadMenu]);
 
-  const handleUpdateField = async (
+  const addPendingChange = (change: PendingChange) => {
+    setPendingChanges((prev) => {
+      const idx = prev.findIndex(
+        (p) =>
+          p.categoryId === change.categoryId &&
+          p.itemId === change.itemId &&
+          p.field === change.field &&
+          p.variantId === change.variantId
+      );
+      if (idx >= 0) {
+        const updated = [...prev];
+        updated[idx] = change;
+        return updated;
+      }
+      return [...prev, change];
+    });
+  };
+
+  const getPendingValue = (
     categoryId: string,
     itemId: string,
     field: string,
-    value: string | number | boolean | null,
     variantId?: string
   ) => {
-    const key = `${categoryId}-${itemId}-${variantId || "main"}`;
-    setSaving(key);
+    const change = pendingChanges.find(
+      (p) =>
+        p.categoryId === categoryId &&
+        p.itemId === itemId &&
+        p.field === field &&
+        p.variantId === variantId
+    );
+    return change?.value;
+  };
 
+  const handleToggleAvailable = async (
+    categoryId: string,
+    itemId: string,
+    currentAvailable: boolean
+  ) => {
+    const newAvailable = !currentAvailable;
+    setCategories((prev) =>
+      prev.map((c) =>
+        c.id === categoryId
+          ? {
+              ...c,
+              items: c.items.map((i) =>
+                i.id === itemId ? { ...i, available: newAvailable } : i
+              ),
+            }
+          : c
+      )
+    );
     try {
-      const newCategories = await updateMenuItem(
-        categoryId,
-        itemId,
-        field,
-        value,
-        variantId
+      await updateMenuItem(categoryId, itemId, "available", newAvailable);
+      broadcastMenuUpdate();
+    } catch {
+      setCategories((prev) =>
+        prev.map((c) =>
+          c.id === categoryId
+            ? {
+                ...c,
+                items: c.items.map((i) =>
+                  i.id === itemId ? { ...i, available: currentAvailable } : i
+                ),
+              }
+            : c
+        )
       );
-      setCategories(newCategories);
+    }
+  };
+
+  const handleBulkUpdate = async () => {
+    if (pendingChanges.length === 0) return;
+    setSaving(true);
+    try {
+      const categories = await bulkUpdateMenu(pendingChanges);
+      setCategories(categories);
+      setPendingChanges([]);
       broadcastMenuUpdate();
     } catch {
       // Silently fail
     }
+    setSaving(false);
+  };
 
-    setSaving(null);
+  const handleDeleteItem = async (categoryId: string, itemId: string) => {
+    const newCategories = await deleteMenuItem(categoryId, itemId);
+    setCategories(newCategories);
+    broadcastMenuUpdate();
+  };
+
+  const handleCreateItem = async (categoryId: string) => {
+    if (!newItemName.trim()) return;
+    const price = newItemPrice ? Number(newItemPrice) : undefined;
+    const newCategories = await createMenuItem(
+      categoryId,
+      newItemName.trim(),
+      undefined,
+      price
+    );
+    setCategories(newCategories);
+    setNewItemName("");
+    setNewItemPrice("");
+    setShowAddItem(null);
+    broadcastMenuUpdate();
+  };
+
+  const handleMoveItem = async (
+    categoryId: string,
+    itemId: string,
+    direction: "up" | "down"
+  ) => {
+    const cat = categories.find((c) => c.id === categoryId);
+    if (!cat) return;
+    const idx = cat.items.findIndex((i) => i.id === itemId);
+    if (idx < 0) return;
+    if (direction === "up" && idx === 0) return;
+    if (direction === "down" && idx === cat.items.length - 1) return;
+
+    const newIdx = direction === "up" ? idx - 1 : idx + 1;
+    const newItems = [...cat.items];
+    [newItems[idx], newItems[newIdx]] = [newItems[newIdx], newItems[idx]];
+
+    setCategories((prev) =>
+      prev.map((c) => (c.id === categoryId ? { ...c, items: newItems } : c))
+    );
+
+    try {
+      await reorderMenuItems(
+        categoryId,
+        newItems.map((i) => i.id)
+      );
+      broadcastMenuUpdate();
+    } catch {
+      setCategories((prev) =>
+        prev.map((c) => (c.id === categoryId ? { ...c, items: cat.items } : c))
+      );
+    }
   };
 
   if (loading) {
@@ -104,7 +237,7 @@ export default function AdminMenuPage() {
   }
 
   return (
-    <div className="min-h-screen pb-24" style={{ backgroundColor: "#d9d9d9" }}>
+    <div className="min-h-screen pb-32" style={{ backgroundColor: "#d9d9d9" }}>
       <div
         className="sticky top-0 z-40 border-b border-gray-300 px-4 py-4"
         style={{ backgroundColor: "#d9d9d9" }}
@@ -114,6 +247,11 @@ export default function AdminMenuPage() {
             <h1 className="text-xl font-bold text-gray-900">Editar Menú</h1>
             <p className="text-sm text-gray-600">
               {categories.reduce((sum, c) => sum + c.items.length, 0)} items
+              {pendingChanges.length > 0 && (
+                <span className="ml-2 text-orange-600 font-medium">
+                  ({pendingChanges.length} sin guardar)
+                </span>
+              )}
             </p>
           </div>
           <div className="flex gap-2">
@@ -154,48 +292,120 @@ export default function AdminMenuPage() {
           .filter((cat) => !expandedCategory || cat.id === expandedCategory)
           .map((cat) => (
             <div key={cat.id} className="mb-6">
-              <h2 className="text-sm font-semibold text-gray-600 mb-3 uppercase tracking-wide">
-                {cat.name}
-              </h2>
-              <div className="flex flex-col" style={{ gap: "12px" }}>
-                {cat.items.map((item) => (
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-sm font-semibold text-gray-600 uppercase tracking-wide">
+                  {cat.name}
+                </h2>
+                <button
+                  onClick={() =>
+                    setShowAddItem(showAddItem === cat.id ? null : cat.id)
+                  }
+                  className="text-xs font-medium text-blue-600 hover:text-blue-800"
+                >
+                  + Agregar
+                </button>
+              </div>
+
+              {showAddItem === cat.id && (
+                <div className="rounded-xl bg-blue-50 border border-blue-200 p-3 mb-3 space-y-2">
+                  <input
+                    type="text"
+                    value={newItemName}
+                    onChange={(e) => setNewItemName(e.target.value)}
+                    placeholder="Nombre del producto"
+                    className="w-full text-sm bg-white border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
+                    autoFocus
+                  />
+                  <input
+                    type="number"
+                    value={newItemPrice}
+                    onChange={(e) => setNewItemPrice(e.target.value)}
+                    placeholder="Precio (opcional)"
+                    className="w-full text-sm bg-white border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        setShowAddItem(null);
+                        setNewItemName("");
+                        setNewItemPrice("");
+                      }}
+                      className="flex-1 text-xs py-2 rounded-lg bg-gray-200 text-gray-700"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={() => handleCreateItem(cat.id)}
+                      disabled={!newItemName.trim()}
+                      className="flex-1 text-xs py-2 rounded-lg bg-blue-600 text-white disabled:opacity-50"
+                    >
+                      Crear
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex flex-col" style={{ gap: "8px" }}>
+                {cat.items.map((item, idx) => (
                   <div
                     key={item.id}
                     className="rounded-xl bg-white border border-gray-300 overflow-hidden"
                   >
-                    <div className="px-4 py-3 space-y-2">
+                    <div className="px-3 py-3 space-y-2">
                       <div className="flex items-center gap-2">
+                        <div className="flex flex-col gap-0.5">
+                          <button
+                            onClick={() => handleMoveItem(cat.id, item.id, "up")}
+                            disabled={idx === 0}
+                            className="text-gray-400 hover:text-gray-700 disabled:opacity-30 text-xs leading-none"
+                          >
+                            ▲
+                          </button>
+                          <button
+                            onClick={() =>
+                              handleMoveItem(cat.id, item.id, "down")
+                            }
+                            disabled={idx === cat.items.length - 1}
+                            className="text-gray-400 hover:text-gray-700 disabled:opacity-30 text-xs leading-none"
+                          >
+                            ▼
+                          </button>
+                        </div>
+
                         <input
                           type="text"
-                          value={item.name}
-                          onChange={(e) => {
-                            const newCategories = categories.map((c) =>
-                              c.id === cat.id
-                                ? {
-                                    ...c,
-                                    items: c.items.map((i) =>
-                                      i.id === item.id
-                                        ? { ...i, name: e.target.value }
-                                        : i
-                                    ),
-                                  }
-                                : c
-                            );
-                            setCategories(newCategories);
-                          }}
-                          onBlur={() =>
-                            handleUpdateField(cat.id, item.id, "name", item.name)
+                          value={
+                            (getPendingValue(cat.id, item.id, "name") as string) ??
+                            item.name
                           }
+                          onChange={(e) => {
+                            setCategories((prev) =>
+                              prev.map((c) =>
+                                c.id === cat.id
+                                  ? {
+                                      ...c,
+                                      items: c.items.map((i) =>
+                                        i.id === item.id
+                                          ? { ...i, name: e.target.value }
+                                          : i
+                                      ),
+                                    }
+                                  : c
+                              )
+                            );
+                            addPendingChange({
+                              categoryId: cat.id,
+                              itemId: item.id,
+                              field: "name",
+                              value: e.target.value,
+                            });
+                          }}
                           className="flex-1 text-sm font-medium text-gray-900 bg-transparent border-b border-gray-200 focus:border-gray-900 focus:outline-none"
                         />
+
                         <button
                           onClick={() =>
-                            handleUpdateField(
-                              cat.id,
-                              item.id,
-                              "available",
-                              !item.available
-                            )
+                            handleToggleAvailable(cat.id, item.id, item.available)
                           }
                           className={`w-8 h-5 rounded-full transition-colors flex-shrink-0 ${
                             item.available ? "bg-green-500" : "bg-gray-300"
@@ -203,45 +413,23 @@ export default function AdminMenuPage() {
                         >
                           <div
                             className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${
-                              item.available ? "translate-x-3.5" : "translate-x-0.5"
+                              item.available
+                                ? "translate-x-3.5"
+                                : "translate-x-0.5"
                             }`}
                           />
                         </button>
+
+                        <button
+                          onClick={() => handleDeleteItem(cat.id, item.id)}
+                          className="text-gray-400 hover:text-red-500 text-sm px-1"
+                        >
+                          ✕
+                        </button>
                       </div>
 
-                      {item.description !== null && (
-                        <input
-                          type="text"
-                          value={item.description}
-                          onChange={(e) => {
-                            const newCategories = categories.map((c) =>
-                              c.id === cat.id
-                                ? {
-                                    ...c,
-                                    items: c.items.map((i) =>
-                                      i.id === item.id
-                                        ? { ...i, description: e.target.value }
-                                        : i
-                                    ),
-                                  }
-                                : c
-                            );
-                            setCategories(newCategories);
-                          }}
-                          onBlur={() =>
-                            handleUpdateField(
-                              cat.id,
-                              item.id,
-                              "description",
-                              item.description
-                            )
-                          }
-                          className="w-full text-xs text-gray-500 bg-transparent border-b border-gray-100 focus:border-gray-400 focus:outline-none"
-                        />
-                      )}
-
                       {item.variants.length > 0 ? (
-                        <div className="space-y-1 pt-1">
+                        <div className="space-y-1 pl-6">
                           {item.variants.map((v) => (
                             <div
                               key={v.id}
@@ -252,84 +440,90 @@ export default function AdminMenuPage() {
                               </span>
                               <input
                                 type="number"
-                                value={v.price}
-                                onChange={(e) => {
-                                  const newCategories = categories.map((c) =>
-                                    c.id === cat.id
-                                      ? {
-                                          ...c,
-                                          items: c.items.map((i) =>
-                                            i.id === item.id
-                                              ? {
-                                                  ...i,
-                                                  variants: i.variants.map(
-                                                    (vr) =>
-                                                      vr.id === v.id
-                                                        ? {
-                                                            ...vr,
-                                                            price: Number(
-                                                              e.target.value
-                                                            ),
-                                                          }
-                                                        : vr
-                                                  ),
-                                                }
-                                              : i
-                                          ),
-                                        }
-                                      : c
-                                  );
-                                  setCategories(newCategories);
-                                }}
-                                onBlur={() =>
-                                  handleUpdateField(
+                                value={
+                                  (getPendingValue(
                                     cat.id,
                                     item.id,
                                     "price",
-                                    v.price,
                                     v.id
-                                  )
+                                  ) as number) ?? v.price
                                 }
+                                onChange={(e) => {
+                                  const val = Number(e.target.value);
+                                  setCategories((prev) =>
+                                    prev.map((c) =>
+                                      c.id === cat.id
+                                        ? {
+                                            ...c,
+                                            items: c.items.map((i) =>
+                                              i.id === item.id
+                                                ? {
+                                                    ...i,
+                                                    variants: i.variants.map(
+                                                      (vr) =>
+                                                        vr.id === v.id
+                                                          ? {
+                                                              ...vr,
+                                                              price: val,
+                                                            }
+                                                          : vr
+                                                    ),
+                                                  }
+                                                : i
+                                            ),
+                                          }
+                                        : c
+                                    )
+                                  );
+                                  addPendingChange({
+                                    categoryId: cat.id,
+                                    itemId: item.id,
+                                    field: "price",
+                                    value: val,
+                                    variantId: v.id,
+                                  });
+                                }}
                                 className="w-24 text-xs text-right text-gray-900 bg-gray-50 rounded px-2 py-1 border border-gray-200 focus:border-gray-900 focus:outline-none"
                               />
                             </div>
                           ))}
                         </div>
                       ) : item.price !== null ? (
-                        <div className="flex items-center justify-between pt-1">
+                        <div className="flex items-center justify-between pl-6">
                           <span className="text-xs text-gray-500">Precio</span>
                           <input
                             type="number"
-                            value={item.price}
-                            onChange={(e) => {
-                              const newCategories = categories.map((c) =>
-                                c.id === cat.id
-                                  ? {
-                                      ...c,
-                                      items: c.items.map((i) =>
-                                        i.id === item.id
-                                          ? {
-                                              ...i,
-                                              price: Number(e.target.value),
-                                            }
-                                          : i
-                                      ),
-                                    }
-                                  : c
-                              );
-                              setCategories(newCategories);
-                            }}
-                            onBlur={() =>
-                              handleUpdateField(cat.id, item.id, "price", item.price)
+                            value={
+                              (getPendingValue(cat.id, item.id, "price") as number) ??
+                              item.price
                             }
+                            onChange={(e) => {
+                              const val = Number(e.target.value);
+                              setCategories((prev) =>
+                                prev.map((c) =>
+                                  c.id === cat.id
+                                    ? {
+                                        ...c,
+                                        items: c.items.map((i) =>
+                                          i.id === item.id
+                                            ? { ...i, price: val }
+                                            : i
+                                        ),
+                                      }
+                                    : c
+                                )
+                              );
+                              addPendingChange({
+                                categoryId: cat.id,
+                                itemId: item.id,
+                                field: "price",
+                                value: val,
+                              });
+                            }}
                             className="w-24 text-xs text-right text-gray-900 bg-gray-50 rounded px-2 py-1 border border-gray-200 focus:border-gray-900 focus:outline-none"
                           />
                         </div>
                       ) : null}
-
-                      {saving === `${cat.id}-${item.id}-main` && (
-                        <div className="text-xs text-gray-400">Guardando...</div>
-                      )}
                     </div>
                   </div>
                 ))}
@@ -337,6 +531,22 @@ export default function AdminMenuPage() {
             </div>
           ))}
       </div>
+
+      {pendingChanges.length > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 p-4 bg-white border-t border-gray-300 shadow-lg">
+          <button
+            onClick={handleBulkUpdate}
+            disabled={saving}
+            className="w-full max-w-lg mx-auto bg-gray-900 hover:bg-gray-800 text-white font-semibold py-4 px-6 rounded-full transition-colors disabled:opacity-50"
+          >
+            {saving
+              ? "Guardando..."
+              : `Actualizar ${pendingChanges.length} cambio${
+                  pendingChanges.length > 1 ? "s" : ""
+                }`}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
