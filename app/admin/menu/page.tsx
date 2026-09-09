@@ -38,7 +38,6 @@ export default function AdminMenuPage() {
   const router = useRouter();
   const supabase = useSupabase();
   const {
-    updateMenuItem,
     bulkUpdateMenu,
     createMenuItem,
     deleteMenuItem,
@@ -88,6 +87,34 @@ export default function AdminMenuPage() {
     init();
   }, [router, supabase, loadMenu]);
 
+  const getPendingValue = (
+    categoryId: string,
+    itemId: string,
+    field: string,
+    variantId?: string
+  ) => {
+    const change = pendingChanges.find(
+      (p) =>
+        p.categoryId === categoryId &&
+        p.itemId === itemId &&
+        p.field === field &&
+        p.variantId === variantId
+    );
+    return change?.value;
+  };
+
+  const getLocalValue = <T,>(
+    categoryId: string,
+    itemId: string,
+    field: string,
+    fallback: T,
+    variantId?: string
+  ): T => {
+    const pending = getPendingValue(categoryId, itemId, field, variantId);
+    if (pending !== undefined) return pending as T;
+    return fallback;
+  };
+
   const addPendingChange = (change: PendingChange) => {
     setPendingChanges((prev) => {
       const idx = prev.findIndex(
@@ -106,23 +133,26 @@ export default function AdminMenuPage() {
     });
   };
 
-  const getPendingValue = (
+  const removePendingChange = (
     categoryId: string,
     itemId: string,
     field: string,
     variantId?: string
   ) => {
-    const change = pendingChanges.find(
-      (p) =>
-        p.categoryId === categoryId &&
-        p.itemId === itemId &&
-        p.field === field &&
-        p.variantId === variantId
+    setPendingChanges((prev) =>
+      prev.filter(
+        (p) =>
+          !(
+            p.categoryId === categoryId &&
+            p.itemId === itemId &&
+            p.field === field &&
+            p.variantId === variantId
+          )
+      )
     );
-    return change?.value;
   };
 
-  const handleToggleAvailable = async (
+  const handleToggleAvailable = (
     categoryId: string,
     itemId: string,
     currentAvailable: boolean
@@ -140,59 +170,56 @@ export default function AdminMenuPage() {
           : c
       )
     );
-    try {
-      await updateMenuItem(categoryId, itemId, "available", newAvailable);
-      broadcastMenuUpdate();
-    } catch {
-      setCategories((prev) =>
-        prev.map((c) =>
-          c.id === categoryId
-            ? {
-                ...c,
-                items: c.items.map((i) =>
-                  i.id === itemId ? { ...i, available: currentAvailable } : i
-                ),
-              }
-            : c
-        )
-      );
-    }
+    addPendingChange({
+      categoryId,
+      itemId,
+      field: "available",
+      value: newAvailable,
+    });
   };
 
   const handleBulkUpdate = async () => {
     if (pendingChanges.length === 0) return;
     setSaving(true);
     try {
-      const categories = await bulkUpdateMenu(pendingChanges);
-      setCategories(categories);
+      const updatedCategories = await bulkUpdateMenu(pendingChanges);
+      setCategories(updatedCategories);
       setPendingChanges([]);
       broadcastMenuUpdate();
-    } catch {
-      // Silently fail
+    } catch (err) {
+      console.error("Failed to save:", err);
     }
     setSaving(false);
   };
 
   const handleDeleteItem = async (categoryId: string, itemId: string) => {
-    const newCategories = await deleteMenuItem(categoryId, itemId);
-    setCategories(newCategories);
-    broadcastMenuUpdate();
+    try {
+      const newCategories = await deleteMenuItem(categoryId, itemId);
+      setCategories(newCategories);
+      broadcastMenuUpdate();
+    } catch (err) {
+      console.error("Failed to delete:", err);
+    }
   };
 
   const handleCreateItem = async (categoryId: string) => {
     if (!newItemName.trim()) return;
-    const price = newItemPrice ? Number(newItemPrice) : undefined;
-    const newCategories = await createMenuItem(
-      categoryId,
-      newItemName.trim(),
-      undefined,
-      price
-    );
-    setCategories(newCategories);
-    setNewItemName("");
-    setNewItemPrice("");
-    setShowAddItem(null);
-    broadcastMenuUpdate();
+    try {
+      const price = newItemPrice ? Number(newItemPrice) : undefined;
+      const newCategories = await createMenuItem(
+        categoryId,
+        newItemName.trim(),
+        undefined,
+        price
+      );
+      setCategories(newCategories);
+      setNewItemName("");
+      setNewItemPrice("");
+      setShowAddItem(null);
+      broadcastMenuUpdate();
+    } catch (err) {
+      console.error("Failed to create:", err);
+    }
   };
 
   const handleMoveItem = async (
@@ -221,9 +248,12 @@ export default function AdminMenuPage() {
         newItems.map((i) => i.id)
       );
       broadcastMenuUpdate();
-    } catch {
+    } catch (err) {
+      console.error("Failed to reorder:", err);
       setCategories((prev) =>
-        prev.map((c) => (c.id === categoryId ? { ...c, items: cat.items } : c))
+        prev.map((c) =>
+          c.id === categoryId ? { ...c, items: cat.items } : c
+        )
       );
     }
   };
@@ -374,10 +404,7 @@ export default function AdminMenuPage() {
 
                         <input
                           type="text"
-                          value={
-                            (getPendingValue(cat.id, item.id, "name") as string) ??
-                            item.name
-                          }
+                          value={getLocalValue(cat.id, item.id, "name", item.name)}
                           onChange={(e) => {
                             setCategories((prev) =>
                               prev.map((c) =>
@@ -405,15 +432,36 @@ export default function AdminMenuPage() {
 
                         <button
                           onClick={() =>
-                            handleToggleAvailable(cat.id, item.id, item.available)
+                            handleToggleAvailable(
+                              cat.id,
+                              item.id,
+                              getLocalValue(
+                                cat.id,
+                                item.id,
+                                "available",
+                                item.available
+                              )
+                            )
                           }
                           className={`w-8 h-5 rounded-full transition-colors flex-shrink-0 ${
-                            item.available ? "bg-green-500" : "bg-gray-300"
+                            getLocalValue(
+                              cat.id,
+                              item.id,
+                              "available",
+                              item.available
+                            )
+                              ? "bg-green-500"
+                              : "bg-gray-300"
                           }`}
                         >
                           <div
                             className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${
-                              item.available
+                              getLocalValue(
+                                cat.id,
+                                item.id,
+                                "available",
+                                item.available
+                              )
                                 ? "translate-x-3.5"
                                 : "translate-x-0.5"
                             }`}
@@ -440,14 +488,13 @@ export default function AdminMenuPage() {
                               </span>
                               <input
                                 type="number"
-                                value={
-                                  (getPendingValue(
-                                    cat.id,
-                                    item.id,
-                                    "price",
-                                    v.id
-                                  ) as number) ?? v.price
-                                }
+                                value={getLocalValue(
+                                  cat.id,
+                                  item.id,
+                                  "price",
+                                  v.price,
+                                  v.id
+                                )}
                                 onChange={(e) => {
                                   const val = Number(e.target.value);
                                   setCategories((prev) =>
@@ -493,10 +540,12 @@ export default function AdminMenuPage() {
                           <span className="text-xs text-gray-500">Precio</span>
                           <input
                             type="number"
-                            value={
-                              (getPendingValue(cat.id, item.id, "price") as number) ??
+                            value={getLocalValue(
+                              cat.id,
+                              item.id,
+                              "price",
                               item.price
-                            }
+                            )}
                             onChange={(e) => {
                               const val = Number(e.target.value);
                               setCategories((prev) =>
