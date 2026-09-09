@@ -1,27 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useSupabase } from "@/lib/supabase/use-client";
-
-interface OrderItem {
-  id: string;
-  product_name: string;
-  variant_name: string | null;
-  quantity: number;
-  unit_price: number;
-  subtotal: number;
-}
-
-interface Order {
-  id: string;
-  customer_name: string;
-  table_number: number;
-  total: number;
-  status: string;
-  created_at: string;
-  items: OrderItem[];
-}
+import { useDatabase, type DBOrder, type OrderEvent } from "@/lib/supabase/use-database";
 
 const statusLabels: Record<string, string> = {
   pending: "Pendiente",
@@ -51,7 +33,8 @@ const nextStatusLabel: Record<string, string> = {
 export default function ComandaPage() {
   const router = useRouter();
   const supabase = useSupabase();
-  const [orders, setOrders] = useState<Order[]>([]);
+  const { fetchActiveOrders, updateOrderStatus, fetchOrderItems, subscribeToOrders } = useDatabase();
+  const [orders, setOrders] = useState<DBOrder[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -78,142 +61,57 @@ export default function ComandaPage() {
         return;
       }
 
-      const { data: ordersData } = await supabase
-        .from("orders")
-        .select("*")
-        .neq("status", "delivered")
-        .order("created_at", { ascending: true });
-
-      if (ordersData) {
-        const ordersWithItems = await Promise.all(
-          ordersData.map(async (order) => {
-            const { data: items } = await supabase
-              .from("order_items")
-              .select("*")
-              .eq("order_id", order.id);
-            return { ...order, items: items || [] };
-          })
-        );
-        setOrders(ordersWithItems);
-      }
-
+      const activeOrders = await fetchActiveOrders();
+      setOrders(activeOrders);
       setLoading(false);
     };
 
     init();
-  }, [router, supabase]);
+  }, [router, supabase, fetchActiveOrders]);
+
+  const hydrateOrder = useCallback(
+    async (order: DBOrder): Promise<DBOrder> => {
+      if (order.items && order.items.length > 0) return order;
+      const items = await fetchOrderItems(order.id);
+      return { ...order, items };
+    },
+    [fetchOrderItems]
+  );
 
   useEffect(() => {
-    if (!supabase) return;
-
-    const fetchOrders = async () => {
-      const { data: ordersData } = await supabase
-        .from("orders")
-        .select("*")
-        .neq("status", "delivered")
-        .order("created_at", { ascending: true });
-
-      if (ordersData) {
-        const ordersWithItems = await Promise.all(
-          ordersData.map(async (order) => {
-            const { data: items } = await supabase
-              .from("order_items")
-              .select("*")
-              .eq("order_id", order.id);
-            return { ...order, items: items || [] };
-          })
-        );
-        setOrders(ordersWithItems);
+    const unsubscribe = subscribeToOrders(async (event: OrderEvent) => {
+      if (event.type === "INSERT") {
+        if (event.order.status !== "delivered") {
+          const hydrated = await hydrateOrder(event.order);
+          setOrders((prev) => [...prev, hydrated]);
+        }
+      } else if (event.type === "UPDATE") {
+        if (event.order.status === "delivered") {
+          setOrders((prev) => prev.filter((o) => o.id !== event.order.id));
+        } else {
+          const hydrated = await hydrateOrder(event.order);
+          setOrders((prev) =>
+            prev.map((o) => (o.id === hydrated.id ? hydrated : o))
+          );
+        }
       }
-    };
+    });
 
-    fetchOrders();
+    return unsubscribe;
+  }, [subscribeToOrders, hydrateOrder]);
 
-    const channel = supabase
-      .channel("comanda-changes")
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "orders",
-        },
-        async (payload) => {
-          const newOrder = payload.new as Order;
-          if (newOrder.status !== "delivered") {
-            const { data: items } = await supabase
-              .from("order_items")
-              .select("*")
-              .eq("order_id", newOrder.id);
-            setOrders((prev) => [...prev, { ...newOrder, items: items || [] }]);
-          }
-        }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "orders",
-        },
-        async (payload) => {
-          const updatedOrder = payload.new as Order;
-
-          if (updatedOrder.status === "delivered") {
-            setOrders((prev) => prev.filter((o) => o.id !== updatedOrder.id));
-          } else {
-            const { data: items } = await supabase
-              .from("order_items")
-              .select("*")
-              .eq("order_id", updatedOrder.id);
-
-            setOrders((prev) =>
-              prev.map((o) =>
-                o.id === updatedOrder.id
-                  ? { ...updatedOrder, items: items || [] }
-                  : o
-              )
-            );
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [supabase]);
-
-  const updateStatus = async (orderId: string, newStatus: string) => {
-    if (!supabase) return;
-    
-    // Optimistic UI update - change status immediately
+  const handleUpdateStatus = async (orderId: string, newStatus: string) => {
+    // Optimistic UI update
     setOrders((prev) =>
-      prev.map((o) =>
-        o.id === orderId ? { ...o, status: newStatus } : o
-      )
+      prev.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o))
     );
 
-    const { error } = await supabase
-      .from("orders")
-      .update({ status: newStatus })
-      .eq("id", orderId);
-
-    if (error) {
-      console.error("Error updating order:", error);
+    try {
+      await updateOrderStatus(orderId, newStatus);
+    } catch {
       // Revert on error
-      const { data: order } = await supabase
-        .from("orders")
-        .select("*")
-        .eq("id", orderId)
-        .single();
-      if (order) {
-        setOrders((prev) =>
-          prev.map((o) =>
-            o.id === orderId ? { ...o, status: order.status } : o
-          )
-        );
-      }
+      const reverted = await fetchActiveOrders();
+      setOrders(reverted);
     }
   };
 
@@ -287,7 +185,7 @@ export default function ComandaPage() {
                 <div className="px-4 py-3">
                   <p className="text-sm text-gray-500 mb-2">{order.customer_name}</p>
                   <div className="space-y-1">
-                    {order.items.map((item) => (
+                    {(order.items || []).map((item) => (
                       <div
                         key={item.id}
                         className="flex items-center justify-between"
@@ -308,7 +206,7 @@ export default function ComandaPage() {
                 <div className="px-4 py-3 border-t border-gray-100 bg-gray-50">
                   <button
                     onClick={() =>
-                      updateStatus(order.id, nextStatus[order.status])
+                      handleUpdateStatus(order.id, nextStatus[order.status])
                     }
                     className="w-full py-3 px-4 rounded-xl font-semibold text-white transition-colors"
                     style={{

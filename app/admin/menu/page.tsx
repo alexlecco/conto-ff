@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useSupabase } from "@/lib/supabase/use-client";
+import { useDatabase } from "@/lib/supabase/use-database";
 
 interface Variant {
   id: string;
@@ -28,22 +29,20 @@ interface Category {
 export default function AdminMenuPage() {
   const router = useRouter();
   const supabase = useSupabase();
+  const { updateMenuItem, fetchMenu } = useDatabase();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
 
-  const fetchMenu = useCallback(async () => {
-    const res = await fetch("/api/menu");
-    if (res.ok) {
-      const data = await res.json();
-      setCategories(data);
-      if (data.length > 0 && !expandedCategory) {
-        setExpandedCategory(data[0].id);
-      }
+  const loadMenu = useCallback(async () => {
+    const data = await fetchMenu();
+    setCategories(data);
+    if (data.length > 0 && !expandedCategory) {
+      setExpandedCategory(data[0].id);
     }
     setLoading(false);
-  }, [expandedCategory]);
+  }, [fetchMenu, expandedCategory]);
 
   useEffect(() => {
     const init = async () => {
@@ -64,12 +63,12 @@ export default function AdminMenuPage() {
         router.push(profile?.user_type === "employee" ? "/comanda" : "/menu");
         return;
       }
-      fetchMenu();
+      loadMenu();
     };
     init();
-  }, [router, supabase, fetchMenu]);
+  }, [router, supabase, loadMenu]);
 
-  const updateField = async (
+  const handleUpdateField = async (
     categoryId: string,
     itemId: string,
     field: string,
@@ -79,35 +78,17 @@ export default function AdminMenuPage() {
     const key = `${categoryId}-${itemId}-${variantId || "main"}`;
     setSaving(key);
 
-    const {
-      data: { session },
-    } = await supabase!.auth.getSession();
-    const token = session?.access_token;
-
-    const body: Record<string, string | number | boolean | null> = {
-      categoryId,
-      itemId,
-    };
-    if (variantId) {
-      body.variantId = variantId;
-      if (field === "name") body.variantName = value;
-      if (field === "price") body.variantPrice = Number(value);
-    } else {
-      body[field] = value;
-    }
-
-    const res = await fetch("/api/admin/menu", {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(body),
-    });
-
-    if (res.ok) {
-      const data = await res.json();
-      setCategories(data.categories);
+    try {
+      const newCategories = await updateMenuItem(
+        categoryId,
+        itemId,
+        field,
+        value,
+        variantId
+      );
+      setCategories(newCategories);
+    } catch {
+      // Silently fail
     }
 
     setSaving(null);
@@ -202,13 +183,13 @@ export default function AdminMenuPage() {
                             setCategories(newCategories);
                           }}
                           onBlur={() =>
-                            updateField(cat.id, item.id, "name", item.name)
+                            handleUpdateField(cat.id, item.id, "name", item.name)
                           }
                           className="flex-1 text-sm font-medium text-gray-900 bg-transparent border-b border-gray-200 focus:border-gray-900 focus:outline-none"
                         />
                         <button
                           onClick={() =>
-                            updateField(
+                            handleUpdateField(
                               cat.id,
                               item.id,
                               "available",
@@ -247,7 +228,7 @@ export default function AdminMenuPage() {
                             setCategories(newCategories);
                           }}
                           onBlur={() =>
-                            updateField(
+                            handleUpdateField(
                               cat.id,
                               item.id,
                               "description",
@@ -300,7 +281,7 @@ export default function AdminMenuPage() {
                                   setCategories(newCategories);
                                 }}
                                 onBlur={() =>
-                                  updateField(
+                                  handleUpdateField(
                                     cat.id,
                                     item.id,
                                     "price",
@@ -338,7 +319,7 @@ export default function AdminMenuPage() {
                               setCategories(newCategories);
                             }}
                             onBlur={() =>
-                              updateField(cat.id, item.id, "price", item.price)
+                              handleUpdateField(cat.id, item.id, "price", item.price)
                             }
                             className="w-24 text-xs text-right text-gray-900 bg-gray-50 rounded px-2 py-1 border border-gray-200 focus:border-gray-900 focus:outline-none"
                           />

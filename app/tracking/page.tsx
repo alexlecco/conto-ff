@@ -1,28 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useSupabase } from "@/lib/supabase/use-client";
+import { useDatabase, type DBOrder, type OrderEvent } from "@/lib/supabase/use-database";
 import { formatPrice } from "@/lib/utils";
-
-interface OrderItem {
-  id: string;
-  product_name: string;
-  variant_name: string | null;
-  quantity: number;
-  unit_price: number;
-  subtotal: number;
-}
-
-interface Order {
-  id: string;
-  customer_name: string;
-  table_number: number;
-  total: number;
-  status: string;
-  created_at: string;
-  items: OrderItem[];
-}
 
 const statusLabels: Record<string, string> = {
   pending: "Pendiente",
@@ -41,7 +23,8 @@ const statusColors: Record<string, string> = {
 export default function TrackingPage() {
   const router = useRouter();
   const supabase = useSupabase();
-  const [orders, setOrders] = useState<Order[]>([]);
+  const { fetchAllOrders, fetchOrderItems, subscribeToOrders } = useDatabase();
+  const [orders, setOrders] = useState<DBOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>("all");
 
@@ -69,94 +52,38 @@ export default function TrackingPage() {
         return;
       }
 
-      const { data: ordersData } = await supabase
-        .from("orders")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (ordersData) {
-        const ordersWithItems = await Promise.all(
-          ordersData.map(async (order) => {
-            const { data: items } = await supabase
-              .from("order_items")
-              .select("*")
-              .eq("order_id", order.id);
-            return { ...order, items: items || [] };
-          })
-        );
-        setOrders(ordersWithItems);
-      }
-
+      const allOrders = await fetchAllOrders();
+      setOrders(allOrders);
       setLoading(false);
     };
 
     init();
-  }, [router, supabase]);
+  }, [router, supabase, fetchAllOrders]);
+
+  const hydrateOrder = useCallback(
+    async (order: DBOrder): Promise<DBOrder> => {
+      if (order.items && order.items.length > 0) return order;
+      const items = await fetchOrderItems(order.id);
+      return { ...order, items };
+    },
+    [fetchOrderItems]
+  );
 
   useEffect(() => {
-    if (!supabase) return;
-
-    const fetchOrders = async () => {
-      const { data: ordersData } = await supabase
-        .from("orders")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (ordersData) {
-        const ordersWithItems = await Promise.all(
-          ordersData.map(async (order) => {
-            const { data: items } = await supabase
-              .from("order_items")
-              .select("*")
-              .eq("order_id", order.id);
-            return { ...order, items: items || [] };
-          })
+    const unsubscribe = subscribeToOrders(async (event: OrderEvent) => {
+      if (event.type === "INSERT") {
+        const hydrated = await hydrateOrder(event.order);
+        setOrders((prev) => [hydrated, ...prev]);
+      } else if (event.type === "UPDATE") {
+        const hydrated = await hydrateOrder(event.order);
+        setOrders((prev) =>
+          prev.map((o) => (o.id === hydrated.id ? hydrated : o))
         );
-        setOrders(ordersWithItems);
       }
-    };
+    });
 
-    fetchOrders();
-
-    const channel = supabase
-      .channel("tracking-changes")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "orders",
-        },
-        async (payload) => {
-          if (payload.eventType === "INSERT") {
-            const newOrder = payload.new as Order;
-            const { data: items } = await supabase
-              .from("order_items")
-              .select("*")
-              .eq("order_id", newOrder.id);
-            setOrders((prev) => [{ ...newOrder, items: items || [] }, ...prev]);
-          } else if (payload.eventType === "UPDATE") {
-            const updatedOrder = payload.new as Order;
-            const { data: items } = await supabase
-              .from("order_items")
-              .select("*")
-              .eq("order_id", updatedOrder.id);
-            setOrders((prev) =>
-              prev.map((o) =>
-                o.id === updatedOrder.id
-                  ? { ...updatedOrder, items: items || [] }
-                  : o
-              )
-            );
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [supabase]);
+    return unsubscribe;
+  }, [subscribeToOrders, hydrateOrder]);
 
   const filteredOrders = filter === "all"
     ? orders
@@ -277,7 +204,7 @@ export default function TrackingPage() {
                 <div className="px-4 py-3">
                   <p className="text-sm text-gray-500 mb-2">{order.customer_name}</p>
                   <div className="space-y-1">
-                    {order.items.map((item) => (
+                    {(order.items || []).map((item) => (
                       <div
                         key={item.id}
                         className="flex items-center justify-between"

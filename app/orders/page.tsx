@@ -3,26 +3,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useSupabase } from "@/lib/supabase/use-client";
+import { useDatabase, type DBOrder, type OrderEvent } from "@/lib/supabase/use-database";
 import { formatPrice } from "@/lib/utils";
-
-interface OrderItem {
-  id: string;
-  product_name: string;
-  variant_name: string | null;
-  quantity: number;
-  unit_price: number;
-  subtotal: number;
-}
-
-interface Order {
-  id: string;
-  customer_name: string;
-  table_number: number;
-  total: number;
-  status: string;
-  created_at: string;
-  items: OrderItem[];
-}
 
 const statusLabels: Record<string, string> = {
   pending: "Pendiente",
@@ -40,20 +22,20 @@ const statusColors: Record<string, string> = {
 const playNotificationSound = () => {
   try {
     const audioContext = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
-    
+
     const playBell = (frequency: number, startTime: number, duration: number) => {
       const oscillator = audioContext.createOscillator();
       const gainNode = audioContext.createGain();
-      
+
       oscillator.connect(gainNode);
       gainNode.connect(audioContext.destination);
-      
+
       oscillator.frequency.value = frequency;
       oscillator.type = "sine";
-      
+
       gainNode.gain.setValueAtTime(0.3, startTime);
       gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
-      
+
       oscillator.start(startTime);
       oscillator.stop(startTime + duration);
     };
@@ -70,9 +52,19 @@ const playNotificationSound = () => {
 export default function OrdersPage() {
   const router = useRouter();
   const supabase = useSupabase();
-  const [orders, setOrders] = useState<Order[]>([]);
+  const { fetchActiveOrders, fetchOrderItems, subscribeToOrders } = useDatabase();
+  const [orders, setOrders] = useState<DBOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastStatusChange, setLastStatusChange] = useState<string | null>(null);
+
+  const hydrateOrder = useCallback(
+    async (order: DBOrder): Promise<DBOrder> => {
+      if (order.items && order.items.length > 0) return order;
+      const items = await fetchOrderItems(order.id);
+      return { ...order, items };
+    },
+    [fetchOrderItems]
+  );
 
   useEffect(() => {
     const init = async () => {
@@ -83,78 +75,39 @@ export default function OrdersPage() {
         return;
       }
 
-      const { data: ordersData } = await supabase
-        .from("orders")
-        .select("*")
-        .neq("status", "delivered")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
-
-      if (ordersData) {
-        const ordersWithItems = await Promise.all(
-          ordersData.map(async (order) => {
-            const { data: items } = await supabase
-              .from("order_items")
-              .select("*")
-              .eq("order_id", order.id);
-            return { ...order, items: items || [] };
-          })
-        );
-        setOrders(ordersWithItems);
-      }
-
+      const activeOrders = await fetchActiveOrders(user.id);
+      setOrders(activeOrders);
       setLoading(false);
     };
 
     init();
-  }, [router, supabase]);
+  }, [router, supabase, fetchActiveOrders]);
 
   useEffect(() => {
-    if (!supabase) return;
-    const channel = supabase
-      .channel("orders-changes")
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "orders",
-        },
-        async (payload) => {
-          const updatedOrder = payload.new as Order;
+    const unsubscribe = subscribeToOrders(async (event: OrderEvent) => {
+      if (event.type === "UPDATE") {
+        const updated = event.order;
 
-          if (updatedOrder.status === "delivered") {
-            setOrders((prev) => prev.filter((o) => o.id !== updatedOrder.id));
-            playNotificationSound();
-            setLastStatusChange(`Tu pedido fue entregado`);
-            setTimeout(() => setLastStatusChange(null), 5000);
-          } else {
-            const { data: items } = await supabase
-              .from("order_items")
-              .select("*")
-              .eq("order_id", updatedOrder.id);
-
-            setOrders((prev) =>
-              prev.map((o) =>
-                o.id === updatedOrder.id
-                  ? { ...updatedOrder, items: items || [] }
-                  : o
-              )
-            );
-            
-            playNotificationSound();
-            const label = statusLabels[updatedOrder.status] || updatedOrder.status;
-            setLastStatusChange(`Tu pedido ahora está: ${label}`);
-            setTimeout(() => setLastStatusChange(null), 5000);
-          }
+        if (updated.status === "delivered") {
+          setOrders((prev) => prev.filter((o) => o.id !== updated.id));
+          playNotificationSound();
+          setLastStatusChange("Tu pedido fue entregado");
+          setTimeout(() => setLastStatusChange(null), 5000);
+        } else {
+          const hydrated = await hydrateOrder(updated);
+          setOrders((prev) =>
+            prev.map((o) => (o.id === hydrated.id ? hydrated : o))
+          );
+          playNotificationSound();
+          const label = statusLabels[hydrated.status] || hydrated.status;
+          setLastStatusChange(`Tu pedido ahora está: ${label}`);
+          setTimeout(() => setLastStatusChange(null), 5000);
         }
-      )
-      .subscribe();
+      }
+    });
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [supabase]);
+    return unsubscribe;
+  }, [subscribeToOrders, hydrateOrder]);
 
   if (loading) {
     return (
@@ -235,7 +188,7 @@ export default function OrdersPage() {
                 </div>
 
                 <div className="px-4 py-3 space-y-2">
-                  {order.items.map((item) => (
+                  {(order.items || []).map((item) => (
                     <div
                       key={item.id}
                       className="flex items-center justify-between"

@@ -3,15 +3,18 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSupabase } from "@/lib/supabase/use-client";
+import { useDatabase } from "@/lib/supabase/use-database";
 import type { CartItem } from "@/types/menu";
 import { formatPrice } from "@/lib/utils";
 
 export default function ConfirmPage() {
   const router = useRouter();
   const supabase = useSupabase();
+  const { createOrder } = useDatabase();
   const [cart, setCart] = useState<CartItem[]>([]);
   const [tableNumber, setTableNumber] = useState(0);
   const [customerName, setCustomerName] = useState("Cliente");
+  const [userId, setUserId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionTime, setSubmissionTime] = useState<Date | null>(null);
 
@@ -31,6 +34,7 @@ export default function ConfirmPage() {
 
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
+        setUserId(user.id);
         setCustomerName(
           user.user_metadata?.full_name || user.email?.split("@")[0] || "Cliente"
         );
@@ -63,46 +67,37 @@ export default function ConfirmPage() {
   };
 
   const handleConfirm = async () => {
-    if (isSubmitting) return;
+    if (isSubmitting || !userId) return;
     setIsSubmitting(true);
     setSubmissionTime(new Date());
 
     try {
-      const response = await fetch("/api/orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          table_number: tableNumber,
-          items: cart.map((ci) => ({
-            product_id: ci.product.id,
-            product_name: ci.product.name,
-            variant_id: ci.variant?.id || null,
-            variant_name: ci.variant?.name || null,
-            quantity: ci.quantity,
-            unit_price: ci.variant?.price || ci.product.price || 0,
-            subtotal: (ci.variant?.price || ci.product.price || 0) * ci.quantity,
-          })),
-          total: subtotal,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Error al enviar el pedido");
-      }
+      const orderId = await createOrder(
+        userId,
+        customerName,
+        tableNumber,
+        cart.map((ci) => ({
+          product_id: ci.product.id,
+          product_name: ci.product.name,
+          variant_id: ci.variant?.id || null,
+          variant_name: ci.variant?.name || null,
+          quantity: ci.quantity,
+          unit_price: ci.variant?.price || ci.product.price || 0,
+          subtotal: (ci.variant?.price || ci.product.price || 0) * ci.quantity,
+        })),
+        subtotal
+      );
 
       localStorage.removeItem("cart");
-      localStorage.setItem("last_order_id", data.order_id);
-      
-      // Keep button disabled for 3 seconds after submission to prevent double-submit
-      const keepDisabled = setTimeout(() => {
+      localStorage.setItem("last_order_id", orderId);
+
+      setTimeout(() => {
         setIsSubmitting(false);
         setSubmissionTime(null);
       }, 3000);
-      
+
       router.push("/sent");
-    } catch (err) {
+    } catch {
       setIsSubmitting(false);
       setSubmissionTime(null);
     }
