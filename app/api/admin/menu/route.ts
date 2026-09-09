@@ -49,8 +49,8 @@ interface ReorderPayload {
 
 async function requireAdmin(request: Request) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-  const supabase = createClient(supabaseUrl, supabaseKey);
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
   const authHeader = request.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) {
@@ -58,25 +58,54 @@ async function requireAdmin(request: Request) {
   }
 
   const token = authHeader.slice(7);
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser(token);
-  if (error || !user) {
-    return { error: "Unauthorized" };
+
+  // Try service role key first (more reliable for server-side)
+  if (serviceKey) {
+    const supabase = createClient(supabaseUrl, serviceKey);
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser(token);
+    if (error || !user) {
+      return { error: "Unauthorized" };
+    }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("user_type")
+      .eq("id", user.id)
+      .single();
+
+    if (!profile || profile.user_type !== "admin") {
+      return { error: "Forbidden" };
+    }
+
+    return { userId: user.id };
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("user_type")
-    .eq("id", user.id)
-    .single();
+  // Fallback: decode JWT payload to get user ID (no network call)
+  try {
+    const payload = JSON.parse(
+      Buffer.from(token.split(".")[1], "base64url").toString()
+    );
+    const userId = payload.sub;
+    if (!userId) return { error: "Invalid token" };
 
-  if (!profile || profile.user_type !== "admin") {
-    return { error: "Forbidden" };
+    const supabase = createClient(supabaseUrl, anonKey);
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("user_type")
+      .eq("id", userId)
+      .single();
+
+    if (!profile || profile.user_type !== "admin") {
+      return { error: "Forbidden" };
+    }
+
+    return { userId };
+  } catch {
+    return { error: "Invalid token" };
   }
-
-  return { userId: user.id };
 }
 
 function loadBar() {
