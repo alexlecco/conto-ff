@@ -229,7 +229,7 @@ export default function MenuPage() {
       const response = await fetch(`/api/menu?t=${Date.now()}`);
       const data = await response.json();
       setMenu(data);
-    }, 30000);
+    }, 10000);
 
     return () => clearInterval(interval);
   }, [router, supabase]);

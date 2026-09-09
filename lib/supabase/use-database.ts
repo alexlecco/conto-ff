@@ -339,7 +339,7 @@ export function useDatabase() {
 
   const broadcastMenuUpdate = useCallback(() => {
     if (!supabase) return;
-    const channel = supabase.channel("menu-updates");
+    const channel = supabase.channel("menu-realtime");
     channel.send({
       type: "broadcast",
       event: "menu-changed",
@@ -352,7 +352,7 @@ export function useDatabase() {
       if (!supabase) return () => {};
 
       const channel = supabase
-        .channel("menu-listener")
+        .channel("menu-realtime")
         .on("broadcast", { event: "menu-changed" }, () => {
           onUpdate();
         })
