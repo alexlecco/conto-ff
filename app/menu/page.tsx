@@ -222,6 +222,14 @@ export default function MenuPage() {
     };
 
     loadMenu();
+
+    const interval = setInterval(async () => {
+      const response = await fetch(`/api/menu?t=${Date.now()}`);
+      const data = await response.json();
+      setMenu(data);
+    }, 30000);
+
+    return () => clearInterval(interval);
   }, [router, supabase]);
 
   useEffect(() => {
