@@ -60,8 +60,9 @@ export default function LoginPage() {
         <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-background/60 to-background" />
         <div className="absolute top-12 left-0 right-0 text-center">
           <h1 className="text-3xl font-bold tracking-tight text-white">
-            Conto <span className="text-primary">FF</span>
+            Conto Pedido
           </h1>
+          <p className="text-sm text-white/60">by Pinta Tacos</p>
         </div>
       </div>
 
@@ -71,9 +72,6 @@ export default function LoginPage() {
             <h2 className="text-xl font-semibold text-white">
               Elegí cómo querés ingresar
             </h2>
-            <p className="text-sm text-muted">
-              Pinta Tacos
-            </p>
           </div>
 
           {error && (
