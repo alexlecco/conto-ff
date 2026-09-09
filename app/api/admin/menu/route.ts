@@ -59,53 +59,37 @@ async function requireAdmin(request: Request) {
 
   const token = authHeader.slice(7);
 
-  // Try service role key first (more reliable for server-side)
-  if (serviceKey) {
-    const supabase = createClient(supabaseUrl, serviceKey);
-    const {
-      data: { user },
-      error,
-    } = await supabase.auth.getUser(token);
-    if (error || !user) {
-      return { error: "Unauthorized" };
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("user_type")
-      .eq("id", user.id)
-      .single();
-
-    if (!profile || profile.user_type !== "admin") {
-      return { error: "Forbidden" };
-    }
-
-    return { userId: user.id };
-  }
-
-  // Fallback: decode JWT payload to get user ID (no network call)
+  // Decode JWT payload to get user ID (no network call needed)
+  let userId: string;
   try {
     const payload = JSON.parse(
       Buffer.from(token.split(".")[1], "base64url").toString()
     );
-    const userId = payload.sub;
-    if (!userId) return { error: "Invalid token" };
-
-    const supabase = createClient(supabaseUrl, anonKey);
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("user_type")
-      .eq("id", userId)
-      .single();
-
-    if (!profile || profile.user_type !== "admin") {
-      return { error: "Forbidden" };
-    }
-
-    return { userId };
+    userId = payload.sub;
+    if (!userId) return { error: "Invalid token: no sub" };
   } catch {
-    return { error: "Invalid token" };
+    return { error: "Invalid token: decode failed" };
   }
+
+  // Use service role key if available (bypasses RLS), otherwise anon key
+  const key = serviceKey || anonKey;
+  const supabase = createClient(supabaseUrl, key);
+
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("user_type")
+    .eq("id", userId)
+    .single();
+
+  if (profileError || !profile) {
+    return { error: `Profile not found: ${profileError?.message}` };
+  }
+
+  if (profile.user_type !== "admin") {
+    return { error: "Forbidden: not admin" };
+  }
+
+  return { userId };
 }
 
 function loadBar() {
