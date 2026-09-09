@@ -1,20 +1,5 @@
-import { readFileSync, writeFileSync } from "fs";
-import { join } from "path";
 import { NextResponse } from "next/server";
-import { invalidateMenuCache } from "@/lib/menu-data";
 import { createClient } from "@supabase/supabase-js";
-
-interface UpdatePayload {
-  categoryId: string;
-  itemId: string;
-  name?: string;
-  description?: string | null;
-  price?: number;
-  available?: boolean;
-  variantId?: string;
-  variantName?: string;
-  variantPrice?: number;
-}
 
 interface BulkUpdatePayload {
   type: "bulk";
@@ -47,19 +32,24 @@ interface ReorderPayload {
   itemIds: string[];
 }
 
-async function requireAdmin(request: Request) {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+function getSupabase() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  return createClient(url, key);
+}
 
+async function requireAdmin(request: Request) {
   const authHeader = request.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) {
     return { error: "Missing authorization" };
   }
 
   const token = authHeader.slice(7);
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  const supabase = createClient(supabaseUrl, serviceKey);
 
-  // Decode JWT payload to get user ID (no network call needed)
+  // Decode JWT to get user ID
   let userId: string;
   try {
     const payload = JSON.parse(
@@ -71,10 +61,7 @@ async function requireAdmin(request: Request) {
     return { error: "Invalid token: decode failed" };
   }
 
-  // Use service role key if available (bypasses RLS), otherwise anon key
-  const key = serviceKey || anonKey;
-  const supabase = createClient(supabaseUrl, key);
-
+  // Check admin role
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("user_type")
@@ -92,27 +79,69 @@ async function requireAdmin(request: Request) {
   return { userId };
 }
 
-function loadBar() {
-  const jsonPath = join(process.cwd(), "data", "backup-db.json");
-  const raw = JSON.parse(readFileSync(jsonPath, "utf-8"));
-  const bar = raw.conto.bars.find(
-    (b: { id: string }) => b.id === "bar-02-pin"
-  );
-  return { raw, bar, jsonPath };
+async function fetchAllCategories() {
+  const supabase = getSupabase();
+  const { data: items, error } = await supabase
+    .from("menu_items")
+    .select("*")
+    .eq("bar_id", "bar-02-pin")
+    .order("category_id")
+    .order("sort_order");
+
+  if (error) throw error;
+
+  const categoryMap = new Map<string, { id: string; name: string; items: typeof items }>();
+
+  for (const item of items || []) {
+    if (!categoryMap.has(item.category_id)) {
+      categoryMap.set(item.category_id, {
+        id: item.category_id,
+        name: getCategoryName(item.category_id),
+        items: [],
+      });
+    }
+    categoryMap.get(item.category_id)!.items.push(item);
+  }
+
+  return Array.from(categoryMap.values()).map((cat) => ({
+    id: cat.id,
+    name: cat.name,
+    items: (cat.items || []).map((item) => ({
+      id: item.id,
+      name: item.name,
+      description: item.description,
+      price: item.price,
+      available: item.available,
+      variants: [] as { id: string; name: string; price: number }[],
+    })),
+  }));
+}
+
+function getCategoryName(id: string): string {
+  const names: Record<string, string> = {
+    "entradas": "Entradas",
+    "tacos": "Tacos",
+    "burritos": "Burritos",
+    "completas": "Completas",
+    "ensaladas": "Ensaladas",
+    "postres": "Postres",
+    "bebidas": "Bebidas",
+    "cervezas": "Cervezas",
+    "tragos": "Tragos",
+    "vinos": "Vinos",
+    "sin-alcohol": "Sin Alcohol",
+    "extras": "Extras",
+    "picadas": "Picadas",
+  };
+  return names[id] || id;
 }
 
 export async function GET() {
   try {
-    const { bar } = loadBar();
-    if (!bar) {
-      return NextResponse.json({ error: "Bar not found" }, { status: 404 });
-    }
-    return NextResponse.json(bar.menu.categories);
+    const categories = await fetchAllCategories();
+    return NextResponse.json(categories);
   } catch {
-    return NextResponse.json(
-      { error: "Error loading menu" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Error loading menu" }, { status: 500 });
   }
 }
 
@@ -124,117 +153,76 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
+    const supabase = getSupabase();
 
     if (body.type === "create") {
       const payload = body as CreateItemPayload;
-      const { bar, jsonPath } = loadBar();
-      if (!bar) {
-        return NextResponse.json({ error: "Bar not found" }, { status: 404 });
-      }
-
-      const category = bar.menu.categories.find(
-        (c: { id: string }) => c.id === payload.categoryId
-      );
-      if (!category) {
-        return NextResponse.json(
-          { error: "Category not found" },
-          { status: 404 }
-        );
-      }
-
       const slug = payload.name
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/^-|-$/g, "");
 
-      const newItem = {
-        id: `${slug}-${Date.now()}`,
-        name: payload.name,
-        description: payload.description || null,
-        price: payload.price ?? null,
-        currency: "ARS",
-        available: true,
-        variants: [],
-      };
+      // Get max sort_order for category
+      const { data: existing } = await supabase
+        .from("menu_items")
+        .select("sort_order")
+        .eq("category_id", payload.categoryId)
+        .order("sort_order", { ascending: false })
+        .limit(1);
 
-      category.items.push(newItem);
-      writeFileSync(jsonPath, JSON.stringify(bar, null, 2), "utf-8");
-      invalidateMenuCache();
+      const maxOrder = existing?.[0]?.sort_order ?? -1;
 
-      return NextResponse.json({
-        success: true,
-        categories: bar.menu.categories,
-      });
+      const { error: insertErr } = await supabase
+        .from("menu_items")
+        .insert({
+          id: `${slug}-${Date.now()}`,
+          bar_id: "bar-02-pin",
+          category_id: payload.categoryId,
+          name: payload.name,
+          description: payload.description || "",
+          price: payload.price ?? 0,
+          available: true,
+          sort_order: maxOrder + 1,
+        });
+
+      if (insertErr) throw insertErr;
+
+      const categories = await fetchAllCategories();
+      return NextResponse.json({ success: true, categories });
     }
 
     if (body.type === "delete") {
       const payload = body as DeleteItemPayload;
-      const { bar, jsonPath } = loadBar();
-      if (!bar) {
-        return NextResponse.json({ error: "Bar not found" }, { status: 404 });
-      }
+      const { error: delErr } = await supabase
+        .from("menu_items")
+        .delete()
+        .eq("id", payload.itemId);
 
-      const category = bar.menu.categories.find(
-        (c: { id: string }) => c.id === payload.categoryId
-      );
-      if (!category) {
-        return NextResponse.json(
-          { error: "Category not found" },
-          { status: 404 }
-        );
-      }
+      if (delErr) throw delErr;
 
-      category.items = category.items.filter(
-        (i: { id: string }) => i.id !== payload.itemId
-      );
-      writeFileSync(jsonPath, JSON.stringify(bar, null, 2), "utf-8");
-      invalidateMenuCache();
-
-      return NextResponse.json({
-        success: true,
-        categories: bar.menu.categories,
-      });
+      const categories = await fetchAllCategories();
+      return NextResponse.json({ success: true, categories });
     }
 
     if (body.type === "reorder") {
       const payload = body as ReorderPayload;
-      const { bar, jsonPath } = loadBar();
-      if (!bar) {
-        return NextResponse.json({ error: "Bar not found" }, { status: 404 });
+
+      // Update sort_order for each item
+      for (let i = 0; i < payload.itemIds.length; i++) {
+        await supabase
+          .from("menu_items")
+          .update({ sort_order: i })
+          .eq("id", payload.itemIds[i]);
       }
 
-      const category = bar.menu.categories.find(
-        (c: { id: string }) => c.id === payload.categoryId
-      );
-      if (!category) {
-        return NextResponse.json(
-          { error: "Category not found" },
-          { status: 404 }
-        );
-      }
-
-      const itemMap = new Map(
-        category.items.map((i: { id: string }) => [i.id, i])
-      );
-      category.items = payload.itemIds
-        .map((id) => itemMap.get(id))
-        .filter(Boolean);
-
-      writeFileSync(jsonPath, JSON.stringify(bar, null, 2), "utf-8");
-      invalidateMenuCache();
-
-      return NextResponse.json({
-        success: true,
-        categories: bar.menu.categories,
-      });
+      const categories = await fetchAllCategories();
+      return NextResponse.json({ success: true, categories });
     }
 
     return NextResponse.json({ error: "Invalid type" }, { status: 400 });
-  } catch {
-    return NextResponse.json(
-      { error: "Error processing request" },
-      { status: 500 }
-    );
+  } catch (err) {
+    console.error("Admin menu POST error:", err);
+    return NextResponse.json({ error: "Error processing request" }, { status: 500 });
   }
 }
 
@@ -246,106 +234,40 @@ export async function PUT(request: Request) {
 
   try {
     const body = await request.json();
+    const supabase = getSupabase();
 
     if (body.type === "bulk") {
       const payload = body as BulkUpdatePayload;
-      const { bar, jsonPath } = loadBar();
-      if (!bar) {
-        return NextResponse.json({ error: "Bar not found" }, { status: 404 });
-      }
 
       for (const u of payload.updates) {
-        const category = bar.menu.categories.find(
-          (c: { id: string }) => c.id === u.categoryId
-        );
-        if (!category) continue;
+        // Skip variant updates for now (not in Supabase schema)
+        if (u.variantId) continue;
 
-        const item = category.items.find(
-          (i: { id: string }) => i.id === u.itemId
-        );
-        if (!item) continue;
+        const updateField: Record<string, unknown> = {};
+        if (u.field === "name") updateField.name = u.value;
+        if (u.field === "description") updateField.description = u.value;
+        if (u.field === "price") updateField.price = Number(u.value);
+        if (u.field === "available") updateField.available = u.value;
 
-        if (u.variantId) {
-          const variant = item.variants?.find(
-            (v: { id: string }) => v.id === u.variantId
-          );
-          if (!variant) continue;
-          if (u.field === "name") variant.name = u.value as string;
-          if (u.field === "price") variant.price = Number(u.value);
-        } else {
-          if (u.field === "name") item.name = u.value as string;
-          if (u.field === "description")
-            item.description = u.value as string | null;
-          if (u.field === "price") item.price = Number(u.value);
-          if (u.field === "available") item.available = u.value as boolean;
+        if (Object.keys(updateField).length > 0) {
+          const { error: updateErr } = await supabase
+            .from("menu_items")
+            .update(updateField)
+            .eq("id", u.itemId);
+
+          if (updateErr) {
+            console.error("Update error:", updateErr);
+          }
         }
       }
 
-      writeFileSync(jsonPath, JSON.stringify(bar, null, 2), "utf-8");
-      invalidateMenuCache();
-
-      return NextResponse.json({
-        success: true,
-        categories: bar.menu.categories,
-      });
+      const categories = await fetchAllCategories();
+      return NextResponse.json({ success: true, categories });
     }
 
-    // Single update (backwards compatible)
-    const single = body as UpdatePayload;
-    const { bar, jsonPath } = loadBar();
-    if (!bar) {
-      return NextResponse.json({ error: "Bar not found" }, { status: 404 });
-    }
-
-    const category = bar.menu.categories.find(
-      (c: { id: string }) => c.id === single.categoryId
-    );
-    if (!category) {
-      return NextResponse.json(
-        { error: "Category not found" },
-        { status: 404 }
-      );
-    }
-
-    const item = category.items.find(
-      (i: { id: string }) => i.id === single.itemId
-    );
-    if (!item) {
-      return NextResponse.json({ error: "Item not found" }, { status: 404 });
-    }
-
-    if (single.variantId) {
-      const variant = item.variants?.find(
-        (v: { id: string }) => v.id === single.variantId
-      );
-      if (!variant) {
-        return NextResponse.json(
-          { error: "Variant not found" },
-          { status: 404 }
-        );
-      }
-      if (single.variantName !== undefined) variant.name = single.variantName;
-      if (single.variantPrice !== undefined)
-        variant.price = single.variantPrice;
-    } else {
-      if (single.name !== undefined) item.name = single.name;
-      if (single.description !== undefined)
-        item.description = single.description;
-      if (single.price !== undefined) item.price = single.price;
-      if (single.available !== undefined) item.available = single.available;
-    }
-
-    writeFileSync(jsonPath, JSON.stringify(bar, null, 2), "utf-8");
-    invalidateMenuCache();
-
-    return NextResponse.json({
-      success: true,
-      categories: bar.menu.categories,
-    });
-  } catch {
-    return NextResponse.json(
-      { error: "Error updating menu" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Invalid type" }, { status: 400 });
+  } catch (err) {
+    console.error("Admin menu PUT error:", err);
+    return NextResponse.json({ error: "Error updating menu" }, { status: 500 });
   }
 }
