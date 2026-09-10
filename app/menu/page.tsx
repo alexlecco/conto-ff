@@ -208,6 +208,7 @@ export default function MenuPage() {
           .from("orders")
           .select("id")
           .eq("user_id", user.id)
+          .neq("status", "delivered")
           .order("created_at", { ascending: false })
           .limit(1)
           .single();
