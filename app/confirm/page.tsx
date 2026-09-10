@@ -84,6 +84,7 @@ export default function ConfirmPage() {
           quantity: ci.quantity,
           unit_price: ci.variant?.price || ci.product.price || 0,
           subtotal: (ci.variant?.price || ci.product.price || 0) * ci.quantity,
+          notes: ci.notes || null,
         })),
         subtotal
       );
@@ -140,6 +141,9 @@ export default function ConfirmPage() {
               <h4 className="font-medium text-white truncate">{ci.product.name}</h4>
               {ci.variant && (
                 <p className="text-sm text-muted truncate">{ci.variant.name}</p>
+              )}
+              {ci.notes && (
+                <p className="text-xs text-primary mt-1 truncate">{ci.notes}</p>
               )}
               <p className="text-sm text-white mt-1">
                 {formatPrice(ci.variant?.price || ci.product.price || 0)}

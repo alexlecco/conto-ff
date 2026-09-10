@@ -24,6 +24,7 @@ export interface CartItem {
   product: MenuItem;
   variant: MenuItemVariant | null;
   quantity: number;
+  notes?: string;
 }
 
 export interface Cart {

@@ -14,6 +14,7 @@ export interface DBOrderItem {
   quantity: number;
   unit_price: number;
   subtotal: number;
+  notes: string | null;
 }
 
 export interface DBOrder {
@@ -68,6 +69,7 @@ export function useDatabase() {
         quantity: number;
         unit_price: number;
         subtotal: number;
+        notes: string | null;
       }[],
       total: number
     ) => {

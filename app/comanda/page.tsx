@@ -190,14 +190,21 @@ export default function ComandaPage() {
                         key={item.id}
                         className="flex items-center justify-between"
                       >
-                        <span className="text-gray-900">
-                          {item.quantity}x {item.product_name}
-                          {item.variant_name && (
-                            <span className="text-gray-500 text-sm ml-1">
-                              ({item.variant_name})
-                            </span>
+                        <div className="flex-1 min-w-0">
+                          <span className="text-gray-900">
+                            {item.quantity}x {item.product_name}
+                            {item.variant_name && (
+                              <span className="text-gray-500 text-sm ml-1">
+                                ({item.variant_name})
+                              </span>
+                            )}
+                          </span>
+                          {item.notes && (
+                            <p className="text-xs text-amber-600 mt-0.5 truncate">
+                              {item.notes}
+                            </p>
                           )}
-                        </span>
+                        </div>
                       </div>
                     ))}
                   </div>
