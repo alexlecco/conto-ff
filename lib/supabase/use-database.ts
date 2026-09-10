@@ -263,6 +263,18 @@ export function useDatabase() {
     [supabase]
   );
 
+  const updateOrderItemNotes = useCallback(
+    async (itemId: string, notes: string | null) => {
+      if (!supabase) throw new Error("Supabase not ready");
+      const { error } = await supabase
+        .from("order_items")
+        .update({ notes })
+        .eq("id", itemId);
+      if (error) throw error;
+    },
+    [supabase]
+  );
+
   // ─── Menu ──────────────────────────────────────────────────────
 
   const updateMenuItem = useCallback(
@@ -428,6 +440,7 @@ export function useDatabase() {
     fetchTodayOrders,
     fetchOrderHistory,
     fetchOrderItems,
+    updateOrderItemNotes,
     // Real-time orders
     subscribeToOrders,
     // Menu

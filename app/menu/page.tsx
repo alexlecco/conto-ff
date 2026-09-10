@@ -65,56 +65,6 @@ function VariantSelector({
   );
 }
 
-function NoteModal({
-  note,
-  onSave,
-  onClose,
-}: {
-  note: string;
-  onSave: (note: string) => void;
-  onClose: () => void;
-}) {
-  const [text, setText] = useState(note);
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm">
-      <div className="w-full max-w-lg bg-card rounded-t-3xl p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-white">Indicación para el cocinero</h3>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-full bg-border/50 text-muted hover:text-white transition-colors"
-          >
-            ✕
-          </button>
-        </div>
-
-        <textarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="Ej: carne a punto, solo mayonesa y tomate..."
-          rows={3}
-          maxLength={200}
-          className="w-full text-sm bg-background border border-border rounded-xl p-3 text-white placeholder-muted/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors resize-none"
-          autoFocus
-        />
-
-        <div className="flex gap-3">
-          <button
-            onClick={() => {
-              onSave(text);
-              onClose();
-            }}
-            className="flex-1 bg-primary hover:bg-primary-hover text-white font-medium py-3 px-4 rounded-xl transition-colors"
-          >
-            Guardar
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function MenuItemComponent({
   item,
   onAdd,
@@ -206,7 +156,7 @@ export default function MenuPage() {
   const [showTableModal, setShowTableModal] = useState(false);
   const [newTableInput, setNewTableInput] = useState("");
   const [lastOrderId, setLastOrderId] = useState<string | null>(null);
-  const [noteModalIndex, setNoteModalIndex] = useState<number | null>(null);
+  const [cartLoaded, setCartLoaded] = useState(false);
 
   useEffect(() => {
     const loadMenu = async () => {
@@ -247,6 +197,7 @@ export default function MenuPage() {
       if (savedCart) {
         setCart(JSON.parse(savedCart));
       }
+      setCartLoaded(true);
 
       const storedOrderId = localStorage.getItem("last_order_id");
       if (storedOrderId) {
@@ -295,8 +246,10 @@ export default function MenuPage() {
   }, [subscribeToMenuUpdates]);
 
   useEffect(() => {
-    localStorage.setItem("cart", JSON.stringify(cart));
-  }, [cart]);
+    if (cartLoaded) {
+      localStorage.setItem("cart", JSON.stringify(cart));
+    }
+  }, [cart, cartLoaded]);
 
   const addToCart = (item: MenuItem, variant: MenuItemVariant | null) => {
     setCart((prev) => {
@@ -311,14 +264,6 @@ export default function MenuPage() {
       }
 
       return [...prev, { product: item, variant, quantity: 1 }];
-    });
-  };
-
-  const updateCartNote = (index: number, notes: string) => {
-    setCart((prev) => {
-      const updated = [...prev];
-      updated[index] = { ...updated[index], notes: notes || undefined };
-      return updated;
     });
   };
 
@@ -454,42 +399,15 @@ export default function MenuPage() {
 
       {cart.length > 0 && (
         <div className="fixed bottom-0 left-0 right-0 z-50 p-4">
-          <div className="w-full max-w-lg mx-auto space-y-2">
-            {cart.map((ci, index) => (
-              <div
-                key={`${ci.product.id}-${ci.variant?.id}`}
-                className="flex items-center gap-3 bg-card border border-border rounded-xl px-3 py-2"
-              >
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-white truncate">
-                    {ci.quantity}x {ci.product.name}
-                    {ci.variant && <span className="text-muted ml-1">({ci.variant.name})</span>}
-                  </p>
-                  {ci.notes && (
-                    <p className="text-xs text-primary truncate mt-0.5">
-                      {ci.notes}
-                    </p>
-                  )}
-                </div>
-                <button
-                  onClick={() => setNoteModalIndex(index)}
-                  className="flex-shrink-0 text-xs text-muted hover:text-white transition-colors px-2 py-1 rounded-lg border border-border"
-                >
-                  {ci.notes ? "editar" : "indicación"}
-                </button>
-              </div>
-            ))}
-
-            <button
-              onClick={() => router.push("/confirm")}
-              className="w-full flex items-center justify-between bg-primary hover:bg-primary-hover text-white font-semibold py-4 px-6 rounded-full transition-colors shadow-lg"
-            >
-              <span>
-                {totalItems} {totalItems === 1 ? "producto" : "productos"}
-              </span>
-              <span className="text-lg">{formatPrice(subtotal)}</span>
-            </button>
-          </div>
+          <button
+            onClick={() => router.push("/confirm")}
+            className="w-full max-w-lg mx-auto flex items-center justify-between bg-primary hover:bg-primary-hover text-white font-semibold py-4 px-6 rounded-full transition-colors shadow-lg"
+          >
+            <span>
+              {totalItems} {totalItems === 1 ? "producto" : "productos"}
+            </span>
+            <span className="text-lg">{formatPrice(subtotal)}</span>
+          </button>
         </div>
       )}
 
@@ -531,13 +449,6 @@ export default function MenuPage() {
         </div>
       )}
 
-      {noteModalIndex !== null && (
-        <NoteModal
-          note={cart[noteModalIndex]?.notes || ""}
-          onSave={(text) => updateCartNote(noteModalIndex, text)}
-          onClose={() => setNoteModalIndex(null)}
-        />
-      )}
     </div>
   );
 }
