@@ -7,6 +7,56 @@ import { useDatabase } from "@/lib/supabase/use-database";
 import type { CartItem } from "@/types/menu";
 import { formatPrice } from "@/lib/utils";
 
+function NoteModal({
+  note,
+  onSave,
+  onClose,
+}: {
+  note: string;
+  onSave: (note: string) => void;
+  onClose: () => void;
+}) {
+  const [text, setText] = useState(note);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm">
+      <div className="w-full max-w-lg bg-card rounded-t-3xl p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-white">Indicación para el cocinero</h3>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center rounded-full bg-border/50 text-muted hover:text-white transition-colors"
+          >
+            ✕
+          </button>
+        </div>
+
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Ej: carne a punto, solo mayonesa y tomate..."
+          rows={3}
+          maxLength={200}
+          className="w-full text-sm bg-background border border-border rounded-xl p-3 text-white placeholder-muted/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors resize-none"
+          autoFocus
+        />
+
+        <div className="flex gap-3">
+          <button
+            onClick={() => {
+              onSave(text);
+              onClose();
+            }}
+            className="flex-1 bg-primary hover:bg-primary-hover text-white font-medium py-3 px-4 rounded-xl transition-colors"
+          >
+            Guardar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ConfirmPage() {
   const router = useRouter();
   const supabase = useSupabase();
@@ -17,6 +67,7 @@ export default function ConfirmPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionTime, setSubmissionTime] = useState<Date | null>(null);
+  const [editingNote, setEditingNote] = useState<{ index: number; currentNote: string } | null>(null);
 
   useEffect(() => {
     const init = async () => {
@@ -44,6 +95,12 @@ export default function ConfirmPage() {
     init();
   }, [router, supabase]);
 
+  useEffect(() => {
+    if (cart.length > 0) {
+      localStorage.setItem("cart", JSON.stringify(cart));
+    }
+  }, [cart]);
+
   const subtotal = cart.reduce(
     (sum, ci) => sum + (ci.variant?.price || ci.product.price || 0) * ci.quantity,
     0
@@ -61,7 +118,14 @@ export default function ConfirmPage() {
         router.push("/menu");
         return [];
       }
-      localStorage.setItem("cart", JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const updateNote = (index: number, notes: string) => {
+    setCart((prev) => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], notes: notes || undefined };
       return updated;
     });
   };
@@ -150,22 +214,32 @@ export default function ConfirmPage() {
               </p>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <button
-                onClick={() => updateQuantity(index, -1)}
-                className="w-8 h-8 flex items-center justify-center rounded-full bg-border/50 text-white hover:bg-border transition-colors"
+                onClick={() =>
+                  setEditingNote({ index, currentNote: ci.notes || "" })
+                }
+                className="flex-shrink-0 text-xs text-muted hover:text-white transition-colors px-2 py-1 rounded-lg border border-border"
               >
-                −
+                {ci.notes ? "editar" : "indicación"}
               </button>
-              <span className="w-6 text-center text-white font-medium">
-                {ci.quantity}
-              </span>
-              <button
-                onClick={() => updateQuantity(index, 1)}
-                className="w-8 h-8 flex items-center justify-center rounded-full bg-primary text-white hover:bg-primary-hover transition-colors"
-              >
-                +
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => updateQuantity(index, -1)}
+                  className="w-8 h-8 flex items-center justify-center rounded-full bg-border/50 text-white hover:bg-border transition-colors"
+                >
+                  −
+                </button>
+                <span className="w-6 text-center text-white font-medium">
+                  {ci.quantity}
+                </span>
+                <button
+                  onClick={() => updateQuantity(index, 1)}
+                  className="w-8 h-8 flex items-center justify-center rounded-full bg-primary text-white hover:bg-primary-hover transition-colors"
+                >
+                  +
+                </button>
+              </div>
             </div>
           </div>
         ))}
@@ -195,6 +269,14 @@ export default function ConfirmPage() {
           </div>
         </div>
       </div>
+
+      {editingNote && (
+        <NoteModal
+          note={editingNote.currentNote}
+          onSave={(text) => updateNote(editingNote.index, text)}
+          onClose={() => setEditingNote(null)}
+        />
+      )}
     </div>
   );
 }
