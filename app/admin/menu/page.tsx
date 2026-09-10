@@ -4,6 +4,21 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useSupabase } from "@/lib/supabase/use-client";
 import { useDatabase } from "@/lib/supabase/use-database";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  useSortable,
+  horizontalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 interface Variant {
   id: string;
@@ -34,6 +49,49 @@ type PendingChange = {
   variantId?: string;
 };
 
+function SortableCategory({
+  cat,
+  isActive,
+  onClick,
+}: {
+  cat: Category;
+  isActive: boolean;
+  onClick: () => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: cat.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 10 : undefined,
+    opacity: isDragging ? 0.8 : undefined,
+  };
+
+  return (
+    <button
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      onClick={onClick}
+      className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors cursor-grab active:cursor-grabbing touch-none select-none ${
+        isActive
+          ? "bg-gray-900 text-white"
+          : "bg-white text-gray-600 border border-gray-300"
+      } ${isDragging ? "shadow-lg ring-2 ring-gray-400" : ""}`}
+    >
+      {cat.name} ({cat.items.length})
+    </button>
+  );
+}
+
 export default function AdminMenuPage() {
   const router = useRouter();
   const supabase = useSupabase();
@@ -42,6 +100,7 @@ export default function AdminMenuPage() {
     createMenuItem,
     deleteMenuItem,
     reorderMenuItems,
+    reorderCategories,
     fetchMenu,
     broadcastMenuUpdate,
   } = useDatabase();
@@ -53,6 +112,12 @@ export default function AdminMenuPage() {
   const [showAddItem, setShowAddItem] = useState<string | null>(null);
   const [newItemName, setNewItemName] = useState("");
   const [newItemPrice, setNewItemPrice] = useState("");
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 5 },
+    })
+  );
 
   const loadMenu = useCallback(async () => {
     const data = await fetchMenu();
@@ -131,25 +196,6 @@ export default function AdminMenuPage() {
       }
       return [...prev, change];
     });
-  };
-
-  const removePendingChange = (
-    categoryId: string,
-    itemId: string,
-    field: string,
-    variantId?: string
-  ) => {
-    setPendingChanges((prev) =>
-      prev.filter(
-        (p) =>
-          !(
-            p.categoryId === categoryId &&
-            p.itemId === itemId &&
-            p.field === field &&
-            p.variantId === variantId
-          )
-      )
-    );
   };
 
   const handleToggleAvailable = (
@@ -258,6 +304,26 @@ export default function AdminMenuPage() {
     }
   };
 
+  const handleCategoryDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = categories.findIndex((c) => c.id === active.id);
+    const newIndex = categories.findIndex((c) => c.id === over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
+
+    const newCategories = arrayMove(categories, oldIndex, newIndex);
+    setCategories(newCategories);
+
+    try {
+      await reorderCategories(newCategories.map((c) => c.id));
+      broadcastMenuUpdate();
+    } catch (err) {
+      console.error("Failed to reorder categories:", err);
+      setCategories(categories);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -300,21 +366,27 @@ export default function AdminMenuPage() {
           </div>
         </div>
 
-        <div className="flex gap-2 mt-3 overflow-x-auto scrollbar-none">
-          {categories.map((cat) => (
-            <button
-              key={cat.id}
-              onClick={() => setExpandedCategory(cat.id)}
-              className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                expandedCategory === cat.id
-                  ? "bg-gray-900 text-white"
-                  : "bg-white text-gray-600 border border-gray-300"
-              }`}
-            >
-              {cat.name} ({cat.items.length})
-            </button>
-          ))}
-        </div>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleCategoryDragEnd}
+        >
+          <SortableContext
+            items={categories.map((c) => c.id)}
+            strategy={horizontalListSortingStrategy}
+          >
+            <div className="flex gap-2 mt-3 overflow-x-auto scrollbar-none">
+              {categories.map((cat) => (
+                <SortableCategory
+                  key={cat.id}
+                  cat={cat}
+                  isActive={expandedCategory === cat.id}
+                  onClick={() => setExpandedCategory(cat.id)}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
       </div>
 
       <div className="px-4 py-4">

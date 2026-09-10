@@ -20,13 +20,46 @@ const statusColors: Record<string, string> = {
   delivered: "bg-gray-500",
 };
 
+function getServicePeriod() {
+  const now = new Date();
+  const hour = now.getHours();
+  let start: Date;
+  let end: Date;
+
+  if (hour >= 19) {
+    start = new Date(now);
+    start.setHours(19, 0, 0, 0);
+    end = new Date(now);
+    end.setDate(end.getDate() + 1);
+    end.setHours(7, 0, 0, 0);
+  } else {
+    start = new Date(now);
+    start.setDate(start.getDate() - 1);
+    start.setHours(19, 0, 0, 0);
+    end = new Date(now);
+    end.setHours(7, 0, 0, 0);
+  }
+
+  return { start, end };
+}
+
+function formatDayName(date: Date): string {
+  return date.toLocaleDateString("es-AR", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
+}
+
 export default function TrackingPage() {
   const router = useRouter();
   const supabase = useSupabase();
-  const { fetchAllOrders, fetchOrderItems, subscribeToOrders } = useDatabase();
+  const { fetchTodayOrders, fetchOrderItems, subscribeToOrders } = useDatabase();
   const [orders, setOrders] = useState<DBOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>("all");
+
+  const servicePeriod = getServicePeriod();
 
   useEffect(() => {
     const init = async () => {
@@ -52,13 +85,13 @@ export default function TrackingPage() {
         return;
       }
 
-      const allOrders = await fetchAllOrders();
-      setOrders(allOrders);
+      const todayOrders = await fetchTodayOrders();
+      setOrders(todayOrders);
       setLoading(false);
     };
 
     init();
-  }, [router, supabase, fetchAllOrders]);
+  }, [router, supabase, fetchTodayOrders]);
 
   const hydrateOrder = useCallback(
     async (order: DBOrder): Promise<DBOrder> => {
@@ -73,7 +106,11 @@ export default function TrackingPage() {
     const unsubscribe = subscribeToOrders(async (event: OrderEvent) => {
       if (event.type === "INSERT") {
         const hydrated = await hydrateOrder(event.order);
-        setOrders((prev) => [hydrated, ...prev]);
+        // Only add if within current service period
+        const orderDate = new Date(hydrated.created_at);
+        if (orderDate >= servicePeriod.start && orderDate < servicePeriod.end) {
+          setOrders((prev) => [hydrated, ...prev]);
+        }
       } else if (event.type === "UPDATE") {
         const hydrated = await hydrateOrder(event.order);
         setOrders((prev) =>
@@ -83,7 +120,7 @@ export default function TrackingPage() {
     });
 
     return unsubscribe;
-  }, [subscribeToOrders, hydrateOrder]);
+  }, [subscribeToOrders, hydrateOrder, servicePeriod]);
 
   const filteredOrders = filter === "all"
     ? orders
@@ -111,6 +148,9 @@ export default function TrackingPage() {
             <p className="text-sm text-gray-600">
               {orders.length} pedidos totales
             </p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              {formatDayName(servicePeriod.start)}
+            </p>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -136,6 +176,12 @@ export default function TrackingPage() {
               Salir
             </button>
           </div>
+        </div>
+
+        <div className="mt-3 px-3 py-2 rounded-lg bg-blue-50 border border-blue-200">
+          <p className="text-xs text-blue-700">
+            Servicio: 19:00 – 07:00 · Ver Historial para pedidos anteriores
+          </p>
         </div>
 
         <div className="flex gap-2 mt-3 overflow-x-auto scrollbar-none">

@@ -32,6 +32,11 @@ interface ReorderPayload {
   itemIds: string[];
 }
 
+interface ReorderCategoriesPayload {
+  type: "reorder-categories";
+  categoryIds: string[];
+}
+
 function getSupabase() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -85,7 +90,7 @@ async function fetchAllCategories() {
     .from("menu_items")
     .select("*")
     .eq("bar_id", "bar-02-pin")
-    .order("category_id")
+    .order("category_sort_order")
     .order("sort_order");
 
   if (error) throw error;
@@ -213,6 +218,22 @@ export async function POST(request: Request) {
           .from("menu_items")
           .update({ sort_order: i })
           .eq("id", payload.itemIds[i]);
+      }
+
+      const categories = await fetchAllCategories();
+      return NextResponse.json({ success: true, categories });
+    }
+
+    if (body.type === "reorder-categories") {
+      const payload = body as ReorderCategoriesPayload;
+
+      // Update category_sort_order for all items in each category
+      for (let i = 0; i < payload.categoryIds.length; i++) {
+        await supabase
+          .from("menu_items")
+          .update({ category_sort_order: i })
+          .eq("category_id", payload.categoryIds[i])
+          .eq("bar_id", "bar-02-pin");
       }
 
       const categories = await fetchAllCategories();

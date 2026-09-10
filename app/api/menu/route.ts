@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
       .from("menu_items")
       .select("*")
       .eq("bar_id", "bar-02-pin")
-      .order("category_id")
+      .order("category_sort_order")
       .order("sort_order");
 
     if (error) {

@@ -150,6 +150,41 @@ export function useDatabase() {
     return fetchItemsForOrders(supabase, data);
   }, [supabase]);
 
+  const fetchTodayOrders = useCallback(async () => {
+    if (!supabase) return [];
+
+    const now = new Date();
+    const hour = now.getHours();
+    let start: Date;
+    let end: Date;
+
+    if (hour >= 19) {
+      // Service period: today 19:00 → tomorrow 07:00
+      start = new Date(now);
+      start.setHours(19, 0, 0, 0);
+      end = new Date(now);
+      end.setDate(end.getDate() + 1);
+      end.setHours(7, 0, 0, 0);
+    } else {
+      // Service period: yesterday 19:00 → today 07:00
+      start = new Date(now);
+      start.setDate(start.getDate() - 1);
+      start.setHours(19, 0, 0, 0);
+      end = new Date(now);
+      end.setHours(7, 0, 0, 0);
+    }
+
+    const { data } = await supabase
+      .from("orders")
+      .select("*")
+      .gte("created_at", start.toISOString())
+      .lt("created_at", end.toISOString())
+      .order("created_at", { ascending: false });
+
+    if (!data) return [];
+    return fetchItemsForOrders(supabase, data);
+  }, [supabase]);
+
   const fetchOrderHistory = useCallback(
     async (userId?: string) => {
       if (!supabase) return [];
@@ -285,7 +320,7 @@ export function useDatabase() {
       } = await supabase.auth.getSession();
       const token = session?.access_token;
       const res = await fetch("/api/admin/menu", {
-        method: body.type === "create" || body.type === "delete" || body.type === "reorder" ? "POST" : "PUT",
+        method: body.type === "create" || body.type === "delete" || body.type === "reorder" || body.type === "reorder-categories" ? "POST" : "PUT",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
@@ -331,6 +366,13 @@ export function useDatabase() {
   const reorderMenuItems = useCallback(
     async (categoryId: string, itemIds: string[]) => {
       return adminMenuRequest({ type: "reorder", categoryId, itemIds });
+    },
+    [adminMenuRequest]
+  );
+
+  const reorderCategories = useCallback(
+    async (categoryIds: string[]) => {
+      return adminMenuRequest({ type: "reorder-categories", categoryIds });
     },
     [adminMenuRequest]
   );
@@ -381,6 +423,7 @@ export function useDatabase() {
     updateOrderStatus,
     fetchActiveOrders,
     fetchAllOrders,
+    fetchTodayOrders,
     fetchOrderHistory,
     fetchOrderItems,
     // Real-time orders
@@ -391,6 +434,7 @@ export function useDatabase() {
     createMenuItem,
     deleteMenuItem,
     reorderMenuItems,
+    reorderCategories,
     fetchMenu,
     // Menu real-time
     broadcastMenuUpdate,
