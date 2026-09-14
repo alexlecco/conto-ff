@@ -47,8 +47,9 @@ export async function GET(request: NextRequest) {
           description: item.description,
           price: item.price,
           available: item.available,
+          image_url: item.image_url || null,
           currency: "ARS",
-          variants: [], // Variants not in Supabase yet
+          variants: [],
         })),
     }));
 

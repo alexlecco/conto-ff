@@ -132,6 +132,12 @@ export default function AdminHistoryPage() {
           </div>
           <div className="flex gap-2">
             <button
+              onClick={() => router.push("/admin/users")}
+              className="px-3 py-1.5 rounded-full text-xs font-medium bg-white text-gray-600 border border-gray-300"
+            >
+              Usuarios
+            </button>
+            <button
               onClick={() => router.push("/tracking")}
               className="px-3 py-1.5 rounded-full text-xs font-medium bg-white text-gray-600 border border-gray-300"
             >

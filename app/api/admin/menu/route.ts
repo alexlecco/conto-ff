@@ -117,6 +117,7 @@ async function fetchAllCategories() {
       description: item.description,
       price: item.price,
       available: item.available,
+      image_url: item.image_url || null,
       variants: [] as { id: string; name: string; price: number }[],
     })),
   }));

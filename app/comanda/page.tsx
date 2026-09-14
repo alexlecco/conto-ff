@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useSupabase } from "@/lib/supabase/use-client";
 import { useDatabase, type DBOrder, type OrderEvent } from "@/lib/supabase/use-database";
@@ -36,6 +37,7 @@ export default function ComandaPage() {
   const { fetchActiveOrders, updateOrderStatus, fetchOrderItems, subscribeToOrders } = useDatabase();
   const [orders, setOrders] = useState<DBOrder[]>([]);
   const [loading, setLoading] = useState(true);
+  const [menuImageMap, setMenuImageMap] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const init = async () => {
@@ -63,6 +65,17 @@ export default function ComandaPage() {
 
       const activeOrders = await fetchActiveOrders();
       setOrders(activeOrders);
+
+      const { data: menuItems } = await supabase
+        .from("menu_items")
+        .select("name, image_url")
+        .eq("bar_id", "bar-02-pin");
+      const imgMap: Record<string, string> = {};
+      for (const mi of menuItems || []) {
+        if (mi.image_url) imgMap[mi.name] = mi.image_url;
+      }
+      setMenuImageMap(imgMap);
+
       setLoading(false);
     };
 
@@ -188,8 +201,16 @@ export default function ComandaPage() {
                     {(order.items || []).map((item) => (
                       <div
                         key={item.id}
-                        className="flex items-center justify-between"
+                        className="flex items-center gap-3"
                       >
+                        {menuImageMap[item.product_name] && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={menuImageMap[item.product_name]}
+                            alt={item.product_name}
+                            className="w-10 h-10 rounded-lg object-cover shrink-0"
+                          />
+                        )}
                         <div className="flex-1 min-w-0">
                           <span className="text-gray-900">
                             {item.quantity}x {item.product_name}

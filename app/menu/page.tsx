@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { useSupabase } from "@/lib/supabase/use-client";
 import { useDatabase } from "@/lib/supabase/use-database";
 import type { MenuCategory, MenuItem, MenuItemVariant, CartItem } from "@/types/menu";
@@ -121,6 +122,16 @@ function MenuItemComponent({
             )}
           </div>
         </div>
+
+        {item.image_url && (
+          <Image
+            src={item.image_url}
+            alt={item.name}
+            width={80}
+            height={80}
+            className="w-20 h-20 rounded-lg object-cover shrink-0 border border-border/50"
+          />
+        )}
 
         {isAvailable && (
           <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full bg-primary text-white text-xl font-bold">
@@ -354,7 +365,7 @@ export default function MenuPage() {
                   .getElementById(`cat-${cat.id}`)
                   ?.scrollIntoView({ behavior: "smooth", block: "start" });
               }}
-              className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+              className={`shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                 activeCategory === cat.id
                   ? "bg-primary text-white"
                   : "bg-card text-muted border border-border hover:border-border/80"

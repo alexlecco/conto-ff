@@ -154,6 +154,12 @@ export default function TrackingPage() {
           </div>
           <div className="flex items-center gap-2">
             <button
+              onClick={() => router.push("/admin/users")}
+              className="px-3 py-1.5 rounded-full text-xs font-medium bg-white text-gray-600 border border-gray-300"
+            >
+              Usuarios
+            </button>
+            <button
               onClick={() => router.push("/admin/menu")}
               className="px-3 py-1.5 rounded-full text-xs font-medium bg-white text-gray-600 border border-gray-300"
             >

@@ -32,6 +32,7 @@ interface Item {
   description: string | null;
   price: number | null;
   available: boolean;
+  image_url: string | null;
   variants: Variant[];
 }
 
@@ -352,6 +353,12 @@ export default function AdminMenuPage() {
           </div>
           <div className="flex gap-2">
             <button
+              onClick={() => router.push("/admin/users")}
+              className="px-3 py-1.5 rounded-full text-xs font-medium bg-white text-gray-600 border border-gray-300"
+            >
+              Usuarios
+            </button>
+            <button
               onClick={() => router.push("/tracking")}
               className="px-3 py-1.5 rounded-full text-xs font-medium bg-white text-gray-600 border border-gray-300"
             >
@@ -546,6 +553,129 @@ export default function AdminMenuPage() {
                         >
                           ✕
                         </button>
+                      </div>
+
+                      {/* Description input */}
+                      <div className="pl-6">
+                        <input
+                          type="text"
+                          value={getLocalValue(cat.id, item.id, "description", item.description || "")}
+                          onChange={(e) => {
+                            setCategories((prev) =>
+                              prev.map((c) =>
+                                c.id === cat.id
+                                  ? {
+                                      ...c,
+                                      items: c.items.map((i) =>
+                                        i.id === item.id
+                                          ? { ...i, description: e.target.value || null }
+                                          : i
+                                      ),
+                                    }
+                                  : c
+                              )
+                            );
+                            addPendingChange({
+                              categoryId: cat.id,
+                              itemId: item.id,
+                              field: "description",
+                              value: e.target.value || null,
+                            });
+                          }}
+                          placeholder="Descripción (opcional)"
+                          className="w-full text-xs text-gray-600 bg-transparent border-b border-gray-200 focus:border-gray-900 focus:outline-none placeholder:text-gray-400"
+                        />
+                      </div>
+
+                      {/* Image upload */}
+                      <div className="pl-6 flex items-center gap-2">
+                        {getLocalValue(cat.id, item.id, "image_url", item.image_url) ? (
+                          <div className="relative group">
+                            <img
+                              src={getLocalValue(cat.id, item.id, "image_url", item.image_url) as string}
+                              alt={item.name}
+                              className="w-16 h-16 rounded-lg object-cover border border-gray-200"
+                            />
+                            <button
+                              onClick={() => {
+                                addPendingChange({
+                                  categoryId: cat.id,
+                                  itemId: item.id,
+                                  field: "image_url",
+                                  value: null,
+                                });
+                                setCategories((prev) =>
+                                  prev.map((c) =>
+                                    c.id === cat.id
+                                      ? {
+                                          ...c,
+                                          items: c.items.map((i) =>
+                                            i.id === item.id ? { ...i, image_url: null } : i
+                                          ),
+                                        }
+                                      : c
+                                  )
+                                );
+                              }}
+                              className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ) : (
+                          <label className="w-16 h-16 rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-blue-400 transition-colors">
+                            <span className="text-lg text-gray-400">📷</span>
+                            <span className="text-[9px] text-gray-400">Foto</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                try {
+                                  const formData = new FormData();
+                                  formData.append("file", file);
+                                  formData.append("itemId", item.id);
+                                  const token = (
+                                    await supabase!.auth.getSession()
+                                  ).data.session?.access_token;
+                                  const res = await fetch("/api/admin/upload", {
+                                    method: "POST",
+                                    headers: { Authorization: `Bearer ${token}` },
+                                    body: formData,
+                                  });
+                                  const data = await res.json();
+                                  if (data.image_url) {
+                                    setCategories((prev) =>
+                                      prev.map((c) =>
+                                        c.id === cat.id
+                                          ? {
+                                              ...c,
+                                              items: c.items.map((i) =>
+                                                i.id === item.id
+                                                  ? { ...i, image_url: data.image_url }
+                                                  : i
+                                              ),
+                                            }
+                                          : c
+                                      )
+                                    );
+                                    addPendingChange({
+                                      categoryId: cat.id,
+                                      itemId: item.id,
+                                      field: "image_url",
+                                      value: data.image_url,
+                                    });
+                                    broadcastMenuUpdate();
+                                  }
+                                } catch (err) {
+                                  console.error("Upload failed:", err);
+                                }
+                              }}
+                            />
+                          </label>
+                        )}
                       </div>
 
                       {item.variants.length > 0 ? (
