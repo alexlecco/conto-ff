@@ -174,7 +174,7 @@ export default function AdminUsersPage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-            placeholder="Nickname (ej: alexlecco34)"
+            placeholder="Nickname (ej: navarrofranco703)"
             className="flex-1 text-sm bg-black text-white border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-gray-900 placeholder:text-gray-400"
           />
           <button
