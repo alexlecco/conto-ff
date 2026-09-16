@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSupabase } from "@/lib/supabase/use-client";
 import { useDatabase } from "@/lib/supabase/use-database";
 import AdminNav from "@/components/admin-nav";
+import { useToast } from "@/components/toast";
 
 interface UserProfile {
   id: string;
@@ -29,6 +30,7 @@ export default function AdminUsersPage() {
   const router = useRouter();
   const supabase = useSupabase();
   const { broadcastProfileUpdate, subscribeToProfileUpdates } = useDatabase();
+  const toast = useToast();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -100,6 +102,8 @@ export default function AdminUsersPage() {
   ) => {
     if (!supabase) return;
     setUpdatingUserId(userId);
+    const user = users.find((u) => u.id === userId);
+    const displayName = user ? getNickname(user.email) : "Usuario";
     try {
       const update: Record<string, unknown> = { user_type: newType };
       if (newType === "regular") update.role = null;
@@ -116,6 +120,7 @@ export default function AdminUsersPage() {
         )
       );
       broadcastProfileUpdate();
+      toast(`${displayName} ahora es ${newType === "employee" ? "empleado" : "regular"}`);
     } catch (err) {
       console.error("Failed to update type:", err);
     }
@@ -125,6 +130,9 @@ export default function AdminUsersPage() {
   const handleRoleChange = async (userId: string, newRole: string | null) => {
     if (!supabase) return;
     setUpdatingUserId(userId);
+    const user = users.find((u) => u.id === userId);
+    const displayName = user ? getNickname(user.email) : "Usuario";
+    const roleLabel = ROLE_OPTIONS.find((r) => r.value === newRole)?.label || "sin rol";
     try {
       const { error } = await supabase
         .from("profiles")
@@ -135,6 +143,7 @@ export default function AdminUsersPage() {
         prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u))
       );
       broadcastProfileUpdate();
+      toast(`${displayName}: rol → ${newRole ? roleLabel : "sin rol"}`);
     } catch (err) {
       console.error("Failed to update role:", err);
     }

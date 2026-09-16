@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useRef, useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { useSupabase } from "@/lib/supabase/use-client";
-import type { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export interface DBOrderItem {
   id: string;
@@ -52,7 +52,6 @@ async function fetchItemsForOrders(
 
 export function useDatabase() {
   const supabase = useSupabase();
-  const channelRef = useRef<RealtimeChannel | null>(null);
 
   // ─── Orders ────────────────────────────────────────────────────
 
@@ -213,8 +212,9 @@ export function useDatabase() {
     (onEvent: (event: OrderEvent) => void) => {
       if (!supabase) return () => {};
 
+      const channelId = `db-orders-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
       const channel = supabase
-        .channel("db-orders-global")
+        .channel(channelId)
         .on(
           "postgres_changes",
           { event: "INSERT", schema: "public", table: "orders" },
@@ -241,11 +241,8 @@ export function useDatabase() {
         )
         .subscribe();
 
-      channelRef.current = channel;
-
       return () => {
         supabase.removeChannel(channel);
-        channelRef.current = null;
       };
     },
     [supabase]
@@ -449,15 +446,7 @@ export function useDatabase() {
     [supabase]
   );
 
-  // ─── Cleanup on unmount ───────────────────────────────────────
-
-  useEffect(() => {
-    return () => {
-      if (channelRef.current && supabase) {
-        supabase.removeChannel(channelRef.current);
-      }
-    };
-  }, [supabase]);
+  // ─── Return ─────────────────────────────────────────────────────
 
   return {
     // Orders

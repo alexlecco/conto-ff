@@ -6,6 +6,7 @@ import { useSupabase } from "@/lib/supabase/use-client";
 import { useDatabase, type DBOrder, type OrderEvent } from "@/lib/supabase/use-database";
 import { formatPrice } from "@/lib/utils";
 import AdminNav from "@/components/admin-nav";
+import { useToast } from "@/components/toast";
 
 const statusLabels: Record<string, string> = {
   pending: "Pendiente",
@@ -56,6 +57,7 @@ export default function TrackingPage() {
   const router = useRouter();
   const supabase = useSupabase();
   const { fetchTodayOrders, fetchOrderItems, subscribeToOrders } = useDatabase();
+  const toast = useToast();
   const [orders, setOrders] = useState<DBOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>("all");
@@ -107,21 +109,29 @@ export default function TrackingPage() {
     const unsubscribe = subscribeToOrders(async (event: OrderEvent) => {
       if (event.type === "INSERT") {
         const hydrated = await hydrateOrder(event.order);
-        // Only add if within current service period
         const orderDate = new Date(hydrated.created_at);
         if (orderDate >= servicePeriod.start && orderDate < servicePeriod.end) {
           setOrders((prev) => [hydrated, ...prev]);
+          toast(`Nuevo pedido: ${hydrated.customer_name} - Mesa ${hydrated.table_number}`);
         }
       } else if (event.type === "UPDATE") {
         const hydrated = await hydrateOrder(event.order);
         setOrders((prev) =>
           prev.map((o) => (o.id === hydrated.id ? hydrated : o))
         );
+        const statusLabel: Record<string, string> = {
+          preparing: "Preparando",
+          ready: "Listo",
+          delivered: "Entregado",
+        };
+        if (statusLabel[hydrated.status]) {
+          toast(`Mesa ${hydrated.table_number}: ${statusLabel[hydrated.status]}`);
+        }
       }
     });
 
     return unsubscribe;
-  }, [subscribeToOrders, hydrateOrder, servicePeriod]);
+  }, [subscribeToOrders, hydrateOrder, servicePeriod, toast]);
 
   const filteredOrders = filter === "all"
     ? orders
