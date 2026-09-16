@@ -396,6 +396,15 @@ export default function AdminMenuPage() {
 
         <div className="flex items-center gap-2 mt-3">
           <div className="flex gap-2 overflow-x-auto scrollbar-none flex-1">
+            <button
+              onClick={() => {
+                setReorderCategories([...categories]);
+                setShowReorderModal(true);
+              }}
+              className="flex-shrink-0 text-xs font-medium text-blue-600 hover:text-blue-800 px-2 py-1.5"
+            >
+              Editar orden
+            </button>
             {categories.map((cat) => (
               <button
                 key={cat.id}
@@ -410,15 +419,6 @@ export default function AdminMenuPage() {
               </button>
             ))}
           </div>
-          <button
-            onClick={() => {
-              setReorderCategories([...categories]);
-              setShowReorderModal(true);
-            }}
-            className="flex-shrink-0 text-xs font-medium text-blue-600 hover:text-blue-800 px-2 py-1.5"
-          >
-            Editar orden
-          </button>
         </div>
       </div>
 
