@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useSupabase } from "@/lib/supabase/use-client";
 import { useDatabase } from "@/lib/supabase/use-database";
+import AdminNav from "@/components/admin-nav";
 
 interface UserProfile {
   id: string;
@@ -157,18 +158,15 @@ export default function AdminUsersPage() {
         style={{ backgroundColor: "#d9d9d9" }}
       >
         <div className="flex items-center justify-between mb-3">
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">Usuarios</h1>
-            <p className="text-sm text-gray-600">
-              {filteredUsers.length} usuario{filteredUsers.length !== 1 && "s"}
-            </p>
+          <div className="flex items-center gap-3">
+            <AdminNav />
+            <div>
+              <h1 className="text-xl font-bold text-gray-900">Usuarios</h1>
+              <p className="text-sm text-gray-600">
+                {filteredUsers.length} usuario{filteredUsers.length !== 1 && "s"}
+              </p>
+            </div>
           </div>
-          <button
-            onClick={() => router.push("/admin/menu")}
-            className="px-3 py-1.5 rounded-full text-xs font-medium bg-white text-gray-600 border border-gray-300"
-          >
-            Menú
-          </button>
         </div>
         <input
           type="text"

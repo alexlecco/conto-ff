@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useSupabase } from "@/lib/supabase/use-client";
 import ImageModal from "@/components/image-modal";
+import AdminNav from "@/components/admin-nav";
 import { useDatabase } from "@/lib/supabase/use-database";
 import {
   DndContext,
@@ -371,36 +372,19 @@ export default function AdminMenuPage() {
         style={{ backgroundColor: "#d9d9d9" }}
       >
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">Editar Menú</h1>
-            <p className="text-sm text-gray-600">
-              {categories.reduce((sum, c) => sum + c.items.length, 0)} items
-              {pendingChanges.length + Object.keys(pendingImages).length > 0 && (
-                <span className="ml-2 text-orange-600 font-medium">
-                  ({pendingChanges.length + Object.keys(pendingImages).length} sin guardar)
-                </span>
-              )}
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => router.push("/admin/users")}
-              className="px-3 py-1.5 rounded-full text-xs font-medium bg-white text-gray-600 border border-gray-300"
-            >
-              Usuarios
-            </button>
-            <button
-              onClick={() => router.push("/tracking")}
-              className="px-3 py-1.5 rounded-full text-xs font-medium bg-white text-gray-600 border border-gray-300"
-            >
-              Tracking
-            </button>
-            <button
-              onClick={() => router.push("/admin/history")}
-              className="px-3 py-1.5 rounded-full text-xs font-medium bg-white text-gray-600 border border-gray-300"
-            >
-              Historial
-            </button>
+          <div className="flex items-center gap-3">
+            <AdminNav />
+            <div>
+              <h1 className="text-xl font-bold text-gray-900">Editar Menú</h1>
+              <p className="text-sm text-gray-600">
+                {categories.reduce((sum, c) => sum + c.items.length, 0)} items
+                {pendingChanges.length + Object.keys(pendingImages).length > 0 && (
+                  <span className="ml-2 text-orange-600 font-medium">
+                    ({pendingChanges.length + Object.keys(pendingImages).length} sin guardar)
+                  </span>
+                )}
+              </p>
+            </div>
           </div>
         </div>
 

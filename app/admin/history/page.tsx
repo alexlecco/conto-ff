@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSupabase } from "@/lib/supabase/use-client";
 import { formatPrice } from "@/lib/utils";
+import AdminNav from "@/components/admin-nav";
 
 interface OrderItem {
   id: string;
@@ -123,32 +124,15 @@ export default function AdminHistoryPage() {
         style={{ backgroundColor: "#d9d9d9" }}
       >
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">Historial</h1>
-            <p className="text-sm text-gray-600">
-              {filteredOrders.length} pedidos &middot;{" "}
-              {formatPrice(totalRevenue)}
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => router.push("/admin/users")}
-              className="px-3 py-1.5 rounded-full text-xs font-medium bg-white text-gray-600 border border-gray-300"
-            >
-              Usuarios
-            </button>
-            <button
-              onClick={() => router.push("/tracking")}
-              className="px-3 py-1.5 rounded-full text-xs font-medium bg-white text-gray-600 border border-gray-300"
-            >
-              Tracking
-            </button>
-            <button
-              onClick={() => router.push("/admin/menu")}
-              className="px-3 py-1.5 rounded-full text-xs font-medium bg-white text-gray-600 border border-gray-300"
-            >
-              Menú
-            </button>
+          <div className="flex items-center gap-3">
+            <AdminNav />
+            <div>
+              <h1 className="text-xl font-bold text-gray-900">Historial</h1>
+              <p className="text-sm text-gray-600">
+                {filteredOrders.length} pedidos &middot;{" "}
+                {formatPrice(totalRevenue)}
+              </p>
+            </div>
           </div>
         </div>
 

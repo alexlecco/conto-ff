@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSupabase } from "@/lib/supabase/use-client";
 import { useDatabase, type DBOrder, type OrderEvent } from "@/lib/supabase/use-database";
 import { formatPrice } from "@/lib/utils";
+import AdminNav from "@/components/admin-nav";
 
 const statusLabels: Record<string, string> = {
   pending: "Pendiente",
@@ -143,44 +144,17 @@ export default function TrackingPage() {
     <div className="min-h-screen pb-24" style={{ backgroundColor: "#d9d9d9" }}>
       <div className="sticky top-0 z-40 border-b border-gray-300 px-4 py-4" style={{ backgroundColor: "#d9d9d9" }}>
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">Tracking</h1>
-            <p className="text-sm text-gray-600">
-              {orders.length} pedidos totales
-            </p>
-            <p className="text-xs text-gray-500 mt-0.5">
-              {formatDayName(servicePeriod.start)}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => router.push("/admin/users")}
-              className="px-3 py-1.5 rounded-full text-xs font-medium bg-white text-gray-600 border border-gray-300"
-            >
-              Usuarios
-            </button>
-            <button
-              onClick={() => router.push("/admin/menu")}
-              className="px-3 py-1.5 rounded-full text-xs font-medium bg-white text-gray-600 border border-gray-300"
-            >
-              Menú
-            </button>
-            <button
-              onClick={() => router.push("/admin/history")}
-              className="px-3 py-1.5 rounded-full text-xs font-medium bg-white text-gray-600 border border-gray-300"
-            >
-              Historial
-            </button>
-            <button
-              onClick={async () => {
-                if (supabase) await supabase.auth.signOut();
-                localStorage.clear();
-                router.push("/login");
-              }}
-              className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
-            >
-              Salir
-            </button>
+          <div className="flex items-center gap-3">
+            <AdminNav />
+            <div>
+              <h1 className="text-xl font-bold text-gray-900">Tracking</h1>
+              <p className="text-sm text-gray-600">
+                {orders.length} pedidos totales
+              </p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                {formatDayName(servicePeriod.start)}
+              </p>
+            </div>
           </div>
         </div>
 
