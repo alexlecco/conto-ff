@@ -18,7 +18,7 @@ import {
   arrayMove,
   SortableContext,
   useSortable,
-  horizontalListSortingStrategy,
+  verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
@@ -52,14 +52,12 @@ type PendingChange = {
   variantId?: string;
 };
 
-function SortableCategory({
+function ReorderCategoryItem({
   cat,
-  isActive,
-  onClick,
+  index,
 }: {
   cat: Category;
-  isActive: boolean;
-  onClick: () => void;
+  index: number;
 }) {
   const {
     attributes,
@@ -78,20 +76,24 @@ function SortableCategory({
   };
 
   return (
-    <button
+    <div
       ref={setNodeRef}
       style={style}
       {...attributes}
       {...listeners}
-      onClick={onClick}
-      className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors cursor-grab active:cursor-grabbing touch-none select-none ${
-        isActive
-          ? "bg-gray-900 text-white"
-          : "bg-white text-gray-600 border border-gray-300"
-      } ${isDragging ? "shadow-lg ring-2 ring-gray-400" : ""}`}
+      className={`flex items-center gap-3 p-3 rounded-xl bg-white border border-gray-200 cursor-grab active:cursor-grabbing touch-none select-none ${
+        isDragging ? "shadow-lg ring-2 ring-gray-400" : ""
+      }`}
     >
-      {cat.name} ({cat.items.length})
-    </button>
+      <span className="text-gray-400 text-sm font-medium w-5 text-center">
+        {index + 1}
+      </span>
+      <span className="flex-1 text-sm font-medium text-gray-900">
+        {cat.name}
+      </span>
+      <span className="text-xs text-gray-400">{cat.items.length} items</span>
+      <span className="text-gray-300">⠿</span>
+    </div>
   );
 }
 
@@ -103,7 +105,7 @@ export default function AdminMenuPage() {
     createMenuItem,
     deleteMenuItem,
     reorderMenuItems,
-    reorderCategories,
+    reorderCategories: reorderCategoriesApi,
     fetchMenu,
     broadcastMenuUpdate,
   } = useDatabase();
@@ -118,6 +120,8 @@ export default function AdminMenuPage() {
   const [pendingImages, setPendingImages] = useState<Record<string, File>>({});
   const [imagePreviewUrls, setImagePreviewUrls] = useState<Record<string, string>>({});
   const [modalImage, setModalImage] = useState<{ src: string; alt: string } | null>(null);
+  const [showReorderModal, setShowReorderModal] = useState(false);
+  const [reorderCategories, setReorderCategories] = useState<Category[]>([]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -341,19 +345,21 @@ export default function AdminMenuPage() {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
-    const oldIndex = categories.findIndex((c) => c.id === active.id);
-    const newIndex = categories.findIndex((c) => c.id === over.id);
+    const oldIndex = reorderCategories.findIndex((c) => c.id === active.id);
+    const newIndex = reorderCategories.findIndex((c) => c.id === over.id);
     if (oldIndex < 0 || newIndex < 0) return;
 
-    const newCategories = arrayMove(categories, oldIndex, newIndex);
-    setCategories(newCategories);
+    setReorderCategories(arrayMove(reorderCategories, oldIndex, newIndex));
+  };
 
+  const handleConfirmReorder = async () => {
     try {
-      await reorderCategories(newCategories.map((c) => c.id));
+      await reorderCategoriesApi(reorderCategories.map((c) => c.id));
+      setCategories(reorderCategories);
       broadcastMenuUpdate();
+      setShowReorderModal(false);
     } catch (err) {
       console.error("Failed to reorder categories:", err);
-      setCategories(categories);
     }
   };
 
@@ -388,27 +394,32 @@ export default function AdminMenuPage() {
           </div>
         </div>
 
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleCategoryDragEnd}
-        >
-          <SortableContext
-            items={categories.map((c) => c.id)}
-            strategy={horizontalListSortingStrategy}
+        <div className="flex items-center gap-2 mt-3">
+          <div className="flex gap-2 overflow-x-auto scrollbar-none flex-1">
+            {categories.map((cat) => (
+              <button
+                key={cat.id}
+                onClick={() => setExpandedCategory(cat.id)}
+                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                  expandedCategory === cat.id
+                    ? "bg-gray-900 text-white"
+                    : "bg-white text-gray-600 border border-gray-300"
+                }`}
+              >
+                {cat.name} ({cat.items.length})
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => {
+              setReorderCategories([...categories]);
+              setShowReorderModal(true);
+            }}
+            className="flex-shrink-0 text-xs font-medium text-blue-600 hover:text-blue-800 px-2 py-1.5"
           >
-            <div className="flex gap-2 mt-3 overflow-x-auto scrollbar-none">
-              {categories.map((cat) => (
-                <SortableCategory
-                  key={cat.id}
-                  cat={cat}
-                  isActive={expandedCategory === cat.id}
-                  onClick={() => setExpandedCategory(cat.id)}
-                />
-              ))}
-            </div>
-          </SortableContext>
-        </DndContext>
+            Editar orden
+          </button>
+        </div>
       </div>
 
       <div className="px-4 py-4">
@@ -799,6 +810,57 @@ export default function AdminMenuPage() {
                   pendingChanges.length + Object.keys(pendingImages).length > 1 ? "s" : ""
                 }`}
           </button>
+        </div>
+      )}
+
+      {showReorderModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-sm bg-white rounded-2xl p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">Reordenar categorías</h3>
+              <button
+                onClick={() => setShowReorderModal(false)}
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+            <p className="text-xs text-gray-500">Arrastrá para cambiar el orden</p>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleCategoryDragEnd}
+            >
+              <SortableContext
+                items={reorderCategories.map((c) => c.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                <div className="space-y-2 max-h-80 overflow-y-auto">
+                  {reorderCategories.map((cat, index) => (
+                    <ReorderCategoryItem
+                      key={cat.id}
+                      cat={cat}
+                      index={index}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setShowReorderModal(false)}
+                className="flex-1 text-sm py-3 rounded-xl bg-gray-100 text-gray-700 font-medium hover:bg-gray-200 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmReorder}
+                className="flex-1 text-sm py-3 rounded-xl bg-gray-900 text-white font-medium hover:bg-gray-800 transition-colors"
+              >
+                Confirmar
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

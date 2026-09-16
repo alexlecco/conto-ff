@@ -431,6 +431,78 @@ export function useDatabase() {
     [supabase]
   );
 
+  // ─── Calls ─────────────────────────────────────────────────────
+
+  const createCall = useCallback(
+    async (userId: string, customerName: string, tableNumber: number, message: string | null) => {
+      if (!supabase) throw new Error("Supabase not ready");
+      const { data, error } = await supabase
+        .from("calls")
+        .insert({
+          user_id: userId,
+          bar_id: "bar-02-pin",
+          table_number: tableNumber,
+          customer_name: customerName,
+          message,
+          status: "submitted",
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    [supabase]
+  );
+
+  const fetchActiveCalls = useCallback(async () => {
+    if (!supabase) return [];
+    const { data } = await supabase
+      .from("calls")
+      .select("*")
+      .eq("bar_id", "bar-02-pin")
+      .in("status", ["submitted", "attended"])
+      .order("created_at", { ascending: false });
+    return data || [];
+  }, [supabase]);
+
+  const updateCallStatus = useCallback(
+    async (callId: string, status: string) => {
+      if (!supabase) throw new Error("Supabase not ready");
+      const { error } = await supabase
+        .from("calls")
+        .update({ status, updated_at: new Date().toISOString() })
+        .eq("id", callId);
+      if (error) throw error;
+    },
+    [supabase]
+  );
+
+  const subscribeToCalls = useCallback(
+    (onEvent: (event: { type: string; call: Record<string, unknown> }) => void) => {
+      if (!supabase) return () => {};
+
+      const channelId = `db-calls-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+      const channel = supabase
+        .channel(channelId)
+        .on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "calls" },
+          (payload) => onEvent({ type: "INSERT", call: payload.new as Record<string, unknown> })
+        )
+        .on(
+          "postgres_changes",
+          { event: "UPDATE", schema: "public", table: "calls" },
+          (payload) => onEvent({ type: "UPDATE", call: payload.new as Record<string, unknown> })
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    },
+    [supabase]
+  );
+
   // ─── Return ─────────────────────────────────────────────────────
 
   return {
@@ -459,5 +531,10 @@ export function useDatabase() {
     // Profile real-time
     broadcastProfileUpdate,
     subscribeToProfileUpdates,
+    // Calls
+    createCall,
+    fetchActiveCalls,
+    updateCallStatus,
+    subscribeToCalls,
   };
 }
