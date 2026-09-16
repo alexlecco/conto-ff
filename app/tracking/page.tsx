@@ -177,7 +177,10 @@ export default function TrackingPage() {
 
         <div className="mt-3 px-3 py-2 rounded-lg bg-blue-50 border border-blue-200">
           <p className="text-xs text-blue-700">
-            Todos los pedidos del día · Pedidos fuera de servicio (7:00–19:00) marcados con ❌
+            Todos los pedidos del día (19:00-7:00) se muestran aquí.
+          </p>
+          <p className="text-xs text-blue-700">
+            Pedidos fuera de servicio (7:01–18:59) marcados con ❌
           </p>
         </div>
 
