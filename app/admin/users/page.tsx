@@ -173,7 +173,7 @@ export default function AdminUsersPage() {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Buscar por nickname, nombre o email..."
-          className="w-full text-sm bg-white border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-gray-900"
+          className="w-full text-sm bg-black border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-gray-900"
         />
       </div>
 
