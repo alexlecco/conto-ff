@@ -82,6 +82,16 @@ export default function AdminUsersPage() {
     return unsubscribe;
   }, [subscribeToProfileUpdates, loadUsers]);
 
+  useEffect(() => {
+    if (!hasSearched) return;
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return;
+    const exact = users.filter(
+      (u) => getNickname(u.email).toLowerCase() === q
+    );
+    setFilteredUsers(exact);
+  }, [users, hasSearched, searchQuery]);
+
   const handleSearch = () => {
     const q = searchQuery.toLowerCase().trim();
     if (!q) {

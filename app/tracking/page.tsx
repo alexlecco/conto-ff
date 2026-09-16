@@ -53,6 +53,11 @@ function formatDayName(date: Date): string {
   });
 }
 
+function isOutOfHours(createdAt: string): boolean {
+  const hour = new Date(createdAt).getHours();
+  return hour >= 7 && hour < 19;
+}
+
 export default function TrackingPage() {
   const router = useRouter();
   const supabase = useSupabase();
@@ -110,7 +115,9 @@ export default function TrackingPage() {
       if (event.type === "INSERT") {
         const hydrated = await hydrateOrder(event.order);
         const orderDate = new Date(hydrated.created_at);
-        if (orderDate >= servicePeriod.start && orderDate < servicePeriod.end) {
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        if (orderDate >= todayStart) {
           setOrders((prev) => [hydrated, ...prev]);
           toast(`Nuevo pedido: ${hydrated.customer_name} - Mesa ${hydrated.table_number}`);
         }
@@ -131,7 +138,7 @@ export default function TrackingPage() {
     });
 
     return unsubscribe;
-  }, [subscribeToOrders, hydrateOrder, servicePeriod, toast]);
+  }, [subscribeToOrders, hydrateOrder, toast]);
 
   const filteredOrders = filter === "all"
     ? orders
@@ -170,7 +177,7 @@ export default function TrackingPage() {
 
         <div className="mt-3 px-3 py-2 rounded-lg bg-blue-50 border border-blue-200">
           <p className="text-xs text-blue-700">
-            Servicio: 19:00 – 07:00 · Ver Historial para pedidos anteriores
+            Todos los pedidos del día · Pedidos fuera de servicio (7:00–19:00) marcados con ❌
           </p>
         </div>
 
@@ -223,6 +230,11 @@ export default function TrackingPage() {
                     <span className="font-semibold text-gray-900">
                       {statusLabels[order.status]}
                     </span>
+                    {isOutOfHours(order.created_at) && (
+                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-red-100 text-red-700">
+                        ❌ fuera de horario
+                      </span>
+                    )}
                   </div>
                   <div className="text-right">
                     <span className="font-bold text-gray-900">

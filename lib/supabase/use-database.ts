@@ -155,31 +155,16 @@ export function useDatabase() {
     if (!supabase) return [];
 
     const now = new Date();
-    const hour = now.getHours();
-    let start: Date;
-    let end: Date;
-
-    if (hour >= 19) {
-      // Service period: today 19:00 → tomorrow 07:00
-      start = new Date(now);
-      start.setHours(19, 0, 0, 0);
-      end = new Date(now);
-      end.setDate(end.getDate() + 1);
-      end.setHours(7, 0, 0, 0);
-    } else {
-      // Service period: yesterday 19:00 → today 07:00
-      start = new Date(now);
-      start.setDate(start.getDate() - 1);
-      start.setHours(19, 0, 0, 0);
-      end = new Date(now);
-      end.setHours(7, 0, 0, 0);
-    }
+    const startOfDay = new Date(now);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(now);
+    endOfDay.setHours(23, 59, 59, 999);
 
     const { data } = await supabase
       .from("orders")
       .select("*")
-      .gte("created_at", start.toISOString())
-      .lt("created_at", end.toISOString())
+      .gte("created_at", startOfDay.toISOString())
+      .lte("created_at", endOfDay.toISOString())
       .order("created_at", { ascending: false });
 
     if (!data) return [];
