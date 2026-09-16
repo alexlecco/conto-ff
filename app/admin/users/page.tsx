@@ -162,9 +162,11 @@ export default function AdminUsersPage() {
             <AdminNav />
             <div>
               <h1 className="text-xl font-bold text-gray-900">Usuarios</h1>
-              <p className="text-sm text-gray-600">
-                {filteredUsers.length} usuario{filteredUsers.length !== 1 && "s"}
-              </p>
+              {searchQuery && (
+                <p className="text-sm text-gray-600">
+                  {filteredUsers.length} resultado{filteredUsers.length !== 1 && "s"}
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -178,7 +180,13 @@ export default function AdminUsersPage() {
       </div>
 
       <div className="px-4 py-4 space-y-3">
-        {filteredUsers.length === 0 && (
+        {!searchQuery && (
+          <div className="text-center text-gray-500 text-sm py-8">
+            Buscá por nickname, nombre o email para encontrar usuarios
+          </div>
+        )}
+
+        {searchQuery && filteredUsers.length === 0 && (
           <div className="text-center text-gray-500 text-sm py-8">
             No se encontraron usuarios
           </div>
