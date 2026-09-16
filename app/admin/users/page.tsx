@@ -33,6 +33,7 @@ export default function AdminUsersPage() {
   const [filteredUsers, setFilteredUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [hasSearched, setHasSearched] = useState(false);
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
 
   const loadUsers = useCallback(async () => {
@@ -79,22 +80,19 @@ export default function AdminUsersPage() {
     return unsubscribe;
   }, [subscribeToProfileUpdates, loadUsers]);
 
-  useEffect(() => {
+  const handleSearch = () => {
     const q = searchQuery.toLowerCase().trim();
     if (!q) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setFilteredUsers(users);
-    } else {
-      setFilteredUsers(
-        users.filter(
-          (u) =>
-            getNickname(u.email).toLowerCase().includes(q) ||
-            (u.full_name && u.full_name.toLowerCase().includes(q)) ||
-            u.email.toLowerCase().includes(q)
-        )
-      );
+      setFilteredUsers([]);
+      setHasSearched(false);
+      return;
     }
-  }, [searchQuery, users]);
+    const exact = users.filter(
+      (u) => getNickname(u.email).toLowerCase() === q
+    );
+    setFilteredUsers(exact);
+    setHasSearched(true);
+  };
 
   const handleTypeChange = async (
     userId: string,
@@ -162,7 +160,7 @@ export default function AdminUsersPage() {
             <AdminNav />
             <div>
               <h1 className="text-xl font-bold text-gray-900">Usuarios</h1>
-              {searchQuery && (
+              {hasSearched && (
                 <p className="text-sm text-gray-600">
                   {filteredUsers.length} resultado{filteredUsers.length !== 1 && "s"}
                 </p>
@@ -170,25 +168,38 @@ export default function AdminUsersPage() {
             </div>
           </div>
         </div>
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Buscar por nickname, nombre o email..."
-          className="w-full text-sm bg-black border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-gray-900"
-        />
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+            placeholder="Nickname (ej: alexlecco34)"
+            className="flex-1 text-sm bg-black text-white border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-gray-900 placeholder:text-gray-400"
+          />
+          <button
+            onClick={handleSearch}
+            className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium shrink-0"
+          >
+            Buscar
+          </button>
+        </div>
       </div>
 
       <div className="px-4 py-4 space-y-3">
-        {!searchQuery && (
-          <div className="text-center text-gray-500 text-sm py-8">
-            Buscá por nickname, nombre o email para encontrar usuarios
+        {!hasSearched && (
+          <div className="text-center py-16">
+            <div className="text-5xl mb-4">👤</div>
+            <p className="text-gray-500 text-sm">Buscá a tus empleados</p>
           </div>
         )}
 
-        {searchQuery && filteredUsers.length === 0 && (
-          <div className="text-center text-gray-500 text-sm py-8">
-            No se encontraron usuarios
+        {hasSearched && filteredUsers.length === 0 && (
+          <div className="text-center py-16">
+            <div className="text-5xl mb-4">🔍</div>
+            <p className="text-gray-500 text-sm">
+              No se encontró ningún usuario con el nickname &quot;{searchQuery}&quot;
+            </p>
           </div>
         )}
 
