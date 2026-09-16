@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useSupabase } from "@/lib/supabase/use-client";
 import { useDatabase, type DBOrder, type OrderEvent } from "@/lib/supabase/use-database";
+import ImageModal from "@/components/image-modal";
 
 const statusLabels: Record<string, string> = {
   pending: "Pendiente",
@@ -38,6 +39,7 @@ export default function ComandaPage() {
   const [orders, setOrders] = useState<DBOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [menuImageMap, setMenuImageMap] = useState<Record<string, string>>({});
+  const [modalImage, setModalImage] = useState<{ src: string; alt: string } | null>(null);
 
   useEffect(() => {
     const init = async () => {
@@ -208,7 +210,8 @@ export default function ComandaPage() {
                           <img
                             src={menuImageMap[item.product_name]}
                             alt={item.product_name}
-                            className="w-10 h-10 rounded-lg object-cover shrink-0"
+                            className="w-10 h-10 rounded-lg object-cover shrink-0 cursor-pointer"
+                            onClick={() => setModalImage({ src: menuImageMap[item.product_name], alt: item.product_name })}
                           />
                         )}
                         <div className="flex-1 min-w-0">
@@ -254,6 +257,14 @@ export default function ComandaPage() {
           </div>
         )}
       </div>
+
+      {modalImage && (
+        <ImageModal
+          src={modalImage.src}
+          alt={modalImage.alt}
+          onClose={() => setModalImage(null)}
+        />
+      )}
     </div>
   );
 }

@@ -403,6 +403,34 @@ export function useDatabase() {
     });
   }, [supabase]);
 
+  const broadcastProfileUpdate = useCallback(() => {
+    if (!supabase) return;
+    const channel = supabase.channel("profile-realtime");
+    channel.send({
+      type: "broadcast",
+      event: "profile-changed",
+      payload: { timestamp: Date.now() },
+    });
+  }, [supabase]);
+
+  const subscribeToProfileUpdates = useCallback(
+    (onUpdate: () => void) => {
+      if (!supabase) return () => {};
+
+      const channel = supabase
+        .channel("profile-realtime")
+        .on("broadcast", { event: "profile-changed" }, () => {
+          onUpdate();
+        })
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    },
+    [supabase]
+  );
+
   const subscribeToMenuUpdates = useCallback(
     (onUpdate: () => void) => {
       if (!supabase) return () => {};
@@ -454,5 +482,8 @@ export function useDatabase() {
     // Menu real-time
     broadcastMenuUpdate,
     subscribeToMenuUpdates,
+    // Profile real-time
+    broadcastProfileUpdate,
+    subscribeToProfileUpdates,
   };
 }

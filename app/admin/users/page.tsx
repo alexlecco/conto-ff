@@ -1,16 +1,20 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useSupabase } from "@/lib/supabase/use-client";
+import { useDatabase } from "@/lib/supabase/use-database";
 
 interface UserProfile {
   id: string;
   full_name: string | null;
-  nickname: string | null;
   email: string;
   user_type: string;
   role: string | null;
+}
+
+function getNickname(email: string): string {
+  return email.split("@")[0] || email;
 }
 
 const ROLE_OPTIONS = [
@@ -23,11 +27,23 @@ const ROLE_OPTIONS = [
 export default function AdminUsersPage() {
   const router = useRouter();
   const supabase = useSupabase();
+  const { broadcastProfileUpdate, subscribeToProfileUpdates } = useDatabase();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
+
+  const loadUsers = useCallback(async () => {
+    if (!supabase) return;
+    const { data: allUsers, error } = await supabase
+      .from("profiles")
+      .select("id, full_name, email, user_type, role")
+      .order("email");
+    if (!error && allUsers) {
+      setUsers(allUsers);
+    }
+  }, [supabase]);
 
   useEffect(() => {
     const init = async () => {
@@ -49,19 +65,18 @@ export default function AdminUsersPage() {
         return;
       }
 
-      const { data: allUsers, error } = await supabase
-        .from("profiles")
-        .select("id, full_name, nickname, email, user_type, role")
-        .order("nickname");
-
-      if (!error && allUsers) {
-        setUsers(allUsers);
-        setFilteredUsers(allUsers);
-      }
+      await loadUsers();
       setLoading(false);
     };
     init();
-  }, [router, supabase]);
+  }, [router, supabase, loadUsers]);
+
+  useEffect(() => {
+    const unsubscribe = subscribeToProfileUpdates(() => {
+      loadUsers();
+    });
+    return unsubscribe;
+  }, [subscribeToProfileUpdates, loadUsers]);
 
   useEffect(() => {
     const q = searchQuery.toLowerCase().trim();
@@ -72,7 +87,7 @@ export default function AdminUsersPage() {
       setFilteredUsers(
         users.filter(
           (u) =>
-            (u.nickname && u.nickname.toLowerCase().includes(q)) ||
+            getNickname(u.email).toLowerCase().includes(q) ||
             (u.full_name && u.full_name.toLowerCase().includes(q)) ||
             u.email.toLowerCase().includes(q)
         )
@@ -87,9 +102,11 @@ export default function AdminUsersPage() {
     if (!supabase) return;
     setUpdatingUserId(userId);
     try {
+      const update: Record<string, unknown> = { user_type: newType };
+      if (newType === "regular") update.role = null;
       const { error } = await supabase
         .from("profiles")
-        .update({ user_type: newType, role: newType === "regular" ? null : undefined })
+        .update(update)
         .eq("id", userId);
       if (error) throw error;
       setUsers((prev) =>
@@ -99,6 +116,7 @@ export default function AdminUsersPage() {
             : u
         )
       );
+      broadcastProfileUpdate();
     } catch (err) {
       console.error("Failed to update type:", err);
     }
@@ -117,6 +135,7 @@ export default function AdminUsersPage() {
       setUsers((prev) =>
         prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u))
       );
+      broadcastProfileUpdate();
     } catch (err) {
       console.error("Failed to update role:", err);
     }
@@ -185,11 +204,11 @@ export default function AdminUsersPage() {
                     }`}
                   />
                   <span className="font-medium text-gray-900 truncate">
-                    {user.nickname || user.full_name || user.email}
+                    {getNickname(user.email)}
                   </span>
                 </div>
                 <p className="text-xs text-gray-500 mt-1">{user.email}</p>
-                {user.full_name && user.nickname && (
+                {user.full_name && (
                   <p className="text-xs text-gray-400">{user.full_name}</p>
                 )}
               </div>

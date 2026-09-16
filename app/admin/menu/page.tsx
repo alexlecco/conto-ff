@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useSupabase } from "@/lib/supabase/use-client";
+import ImageModal from "@/components/image-modal";
 import { useDatabase } from "@/lib/supabase/use-database";
 import {
   DndContext,
@@ -113,6 +114,9 @@ export default function AdminMenuPage() {
   const [showAddItem, setShowAddItem] = useState<string | null>(null);
   const [newItemName, setNewItemName] = useState("");
   const [newItemPrice, setNewItemPrice] = useState("");
+  const [pendingImages, setPendingImages] = useState<Record<string, File>>({});
+  const [imagePreviewUrls, setImagePreviewUrls] = useState<Record<string, string>>({});
+  const [modalImage, setModalImage] = useState<{ src: string; alt: string } | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -226,12 +230,39 @@ export default function AdminMenuPage() {
   };
 
   const handleBulkUpdate = async () => {
-    if (pendingChanges.length === 0) return;
+    if (pendingChanges.length === 0 && Object.keys(pendingImages).length === 0) return;
     setSaving(true);
     try {
-      const updatedCategories = await bulkUpdateMenu(pendingChanges);
-      setCategories(updatedCategories);
-      setPendingChanges([]);
+      if (pendingChanges.length > 0) {
+        const updatedCategories = await bulkUpdateMenu(pendingChanges);
+        setCategories(updatedCategories);
+        setPendingChanges([]);
+      }
+
+      const token = (await supabase!.auth.getSession()).data.session?.access_token;
+      for (const [itemId, file] of Object.entries(pendingImages)) {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("itemId", itemId);
+        const res = await fetch("/api/admin/upload", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData,
+        });
+        const data = await res.json();
+        if (data.image_url) {
+          setCategories((prev) =>
+            prev.map((c) => ({
+              ...c,
+              items: c.items.map((i) =>
+                i.id === itemId ? { ...i, image_url: data.image_url } : i
+              ),
+            }))
+          );
+        }
+      }
+      setPendingImages({});
+      setImagePreviewUrls({});
       broadcastMenuUpdate();
     } catch (err) {
       console.error("Failed to save:", err);
@@ -344,9 +375,9 @@ export default function AdminMenuPage() {
             <h1 className="text-xl font-bold text-gray-900">Editar Menú</h1>
             <p className="text-sm text-gray-600">
               {categories.reduce((sum, c) => sum + c.items.length, 0)} items
-              {pendingChanges.length > 0 && (
+              {pendingChanges.length + Object.keys(pendingImages).length > 0 && (
                 <span className="ml-2 text-orange-600 font-medium">
-                  ({pendingChanges.length} sin guardar)
+                  ({pendingChanges.length + Object.keys(pendingImages).length} sin guardar)
                 </span>
               )}
             </p>
@@ -594,7 +625,11 @@ export default function AdminMenuPage() {
                             <img
                               src={getLocalValue(cat.id, item.id, "image_url", item.image_url) as string}
                               alt={item.name}
-                              className="w-16 h-16 rounded-lg object-cover border border-gray-200"
+                              className="w-16 h-16 rounded-lg object-cover border border-gray-200 cursor-pointer"
+                              onClick={() => setModalImage({
+                                src: getLocalValue(cat.id, item.id, "image_url", item.image_url) as string,
+                                alt: item.name,
+                              })}
                             />
                             <button
                               onClick={() => {
@@ -630,48 +665,32 @@ export default function AdminMenuPage() {
                               type="file"
                               accept="image/*"
                               className="hidden"
-                              onChange={async (e) => {
+                              onChange={(e) => {
                                 const file = e.target.files?.[0];
                                 if (!file) return;
-                                try {
-                                  const formData = new FormData();
-                                  formData.append("file", file);
-                                  formData.append("itemId", item.id);
-                                  const token = (
-                                    await supabase!.auth.getSession()
-                                  ).data.session?.access_token;
-                                  const res = await fetch("/api/admin/upload", {
-                                    method: "POST",
-                                    headers: { Authorization: `Bearer ${token}` },
-                                    body: formData,
-                                  });
-                                  const data = await res.json();
-                                  if (data.image_url) {
-                                    setCategories((prev) =>
-                                      prev.map((c) =>
-                                        c.id === cat.id
-                                          ? {
-                                              ...c,
-                                              items: c.items.map((i) =>
-                                                i.id === item.id
-                                                  ? { ...i, image_url: data.image_url }
-                                                  : i
-                                              ),
-                                            }
-                                          : c
-                                      )
-                                    );
-                                    addPendingChange({
-                                      categoryId: cat.id,
-                                      itemId: item.id,
-                                      field: "image_url",
-                                      value: data.image_url,
-                                    });
-                                    broadcastMenuUpdate();
-                                  }
-                                } catch (err) {
-                                  console.error("Upload failed:", err);
-                                }
+                                const previewUrl = URL.createObjectURL(file);
+                                setPendingImages((prev) => ({ ...prev, [item.id]: file }));
+                                setImagePreviewUrls((prev) => ({ ...prev, [item.id]: previewUrl }));
+                                setCategories((prev) =>
+                                  prev.map((c) =>
+                                    c.id === cat.id
+                                      ? {
+                                          ...c,
+                                          items: c.items.map((i) =>
+                                            i.id === item.id
+                                              ? { ...i, image_url: previewUrl }
+                                              : i
+                                          ),
+                                        }
+                                      : c
+                                  )
+                                );
+                                addPendingChange({
+                                  categoryId: cat.id,
+                                  itemId: item.id,
+                                  field: "image_url",
+                                  value: previewUrl,
+                                });
                               }}
                             />
                           </label>
@@ -783,7 +802,7 @@ export default function AdminMenuPage() {
           ))}
       </div>
 
-      {pendingChanges.length > 0 && (
+      {(pendingChanges.length > 0 || Object.keys(pendingImages).length > 0) && (
         <div className="fixed bottom-0 left-0 right-0 z-50 p-4 bg-white border-t border-gray-300 shadow-lg">
           <button
             onClick={handleBulkUpdate}
@@ -792,11 +811,19 @@ export default function AdminMenuPage() {
           >
             {saving
               ? "Guardando..."
-              : `Actualizar ${pendingChanges.length} cambio${
-                  pendingChanges.length > 1 ? "s" : ""
+              : `Actualizar ${pendingChanges.length + Object.keys(pendingImages).length} cambio${
+                  pendingChanges.length + Object.keys(pendingImages).length > 1 ? "s" : ""
                 }`}
           </button>
         </div>
+      )}
+
+      {modalImage && (
+        <ImageModal
+          src={modalImage.src}
+          alt={modalImage.alt}
+          onClose={() => setModalImage(null)}
+        />
       )}
     </div>
   );

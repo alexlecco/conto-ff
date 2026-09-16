@@ -7,6 +7,7 @@ import { useSupabase } from "@/lib/supabase/use-client";
 import { useDatabase } from "@/lib/supabase/use-database";
 import type { MenuCategory, MenuItem, MenuItemVariant, CartItem } from "@/types/menu";
 import { formatPrice } from "@/lib/utils";
+import ImageModal from "@/components/image-modal";
 
 function VariantSelector({
   item,
@@ -74,6 +75,7 @@ function MenuItemComponent({
   onAdd: (item: MenuItem, variant: MenuItemVariant | null) => void;
 }) {
   const [showVariants, setShowVariants] = useState(false);
+  const [modalImage, setModalImage] = useState<{ src: string; alt: string } | null>(null);
 
   const hasVariants = item.variants.length > 0;
   const availableVariants = item.variants.filter((v) => v.available);
@@ -129,7 +131,11 @@ function MenuItemComponent({
             alt={item.name}
             width={80}
             height={80}
-            className="w-20 h-20 rounded-lg object-cover shrink-0 border border-border/50"
+            className="w-20 h-20 rounded-lg object-cover shrink-0 border border-border/50 cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation();
+              setModalImage({ src: item.image_url!, alt: item.name });
+            }}
           />
         )}
 
@@ -148,6 +154,14 @@ function MenuItemComponent({
             setShowVariants(false);
           }}
           onClose={() => setShowVariants(false)}
+        />
+      )}
+
+      {modalImage && (
+        <ImageModal
+          src={modalImage.src}
+          alt={modalImage.alt}
+          onClose={() => setModalImage(null)}
         />
       )}
     </>
