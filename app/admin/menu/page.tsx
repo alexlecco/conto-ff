@@ -6,21 +6,6 @@ import { useSupabase } from "@/lib/supabase/use-client";
 import ImageModal from "@/components/image-modal";
 import AdminNav from "@/components/admin-nav";
 import { useDatabase } from "@/lib/supabase/use-database";
-import {
-  DndContext,
-  closestCenter,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  arrayMove,
-  SortableContext,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 
 interface Variant {
   id: string;
@@ -55,44 +40,41 @@ type PendingChange = {
 function ReorderCategoryItem({
   cat,
   index,
+  total,
+  onMoveUp,
+  onMoveDown,
 }: {
   cat: Category;
   index: number;
+  total: number;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
 }) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: cat.id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    zIndex: isDragging ? 10 : undefined,
-    opacity: isDragging ? 0.8 : undefined,
-  };
-
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}
-      className={`flex items-center gap-3 p-3 rounded-xl bg-white border border-gray-200 cursor-grab active:cursor-grabbing touch-none select-none ${
-        isDragging ? "shadow-lg ring-2 ring-gray-400" : ""
-      }`}
-    >
+    <div className="flex items-center gap-2 p-3 rounded-xl bg-white border border-gray-200">
       <span className="text-gray-400 text-sm font-medium w-5 text-center">
         {index + 1}
       </span>
-      <span className="flex-1 text-sm font-medium text-gray-900">
+      <span className="flex-1 text-sm font-medium text-gray-900 truncate">
         {cat.name}
       </span>
-      <span className="text-xs text-gray-400">{cat.items.length} items</span>
-      <span className="text-gray-300">⠿</span>
+      <span className="text-xs text-gray-400 shrink-0">{cat.items.length} items</span>
+      <div className="flex flex-col gap-0.5 shrink-0">
+        <button
+          onClick={onMoveUp}
+          disabled={index === 0}
+          className="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+        >
+          ▲
+        </button>
+        <button
+          onClick={onMoveDown}
+          disabled={index === total - 1}
+          className="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+        >
+          ▼
+        </button>
+      </div>
     </div>
   );
 }
@@ -122,12 +104,6 @@ export default function AdminMenuPage() {
   const [modalImage, setModalImage] = useState<{ src: string; alt: string } | null>(null);
   const [showReorderModal, setShowReorderModal] = useState(false);
   const [reorderCategories, setReorderCategories] = useState<Category[]>([]);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: { distance: 5 },
-    })
-  );
 
   const loadMenu = useCallback(async () => {
     const data = await fetchMenu();
@@ -341,15 +317,12 @@ export default function AdminMenuPage() {
     }
   };
 
-  const handleCategoryDragEnd = async (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-
-    const oldIndex = reorderCategories.findIndex((c) => c.id === active.id);
-    const newIndex = reorderCategories.findIndex((c) => c.id === over.id);
-    if (oldIndex < 0 || newIndex < 0) return;
-
-    setReorderCategories(arrayMove(reorderCategories, oldIndex, newIndex));
+  const handleMoveCategory = (index: number, direction: "up" | "down") => {
+    const newIndex = direction === "up" ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= reorderCategories.length) return;
+    const updated = [...reorderCategories];
+    [updated[index], updated[newIndex]] = [updated[newIndex], updated[index]];
+    setReorderCategories(updated);
   };
 
   const handleConfirmReorder = async () => {
@@ -825,27 +798,19 @@ export default function AdminMenuPage() {
                 ✕
               </button>
             </div>
-            <p className="text-xs text-gray-500">Arrastrá para cambiar el orden</p>
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleCategoryDragEnd}
-            >
-              <SortableContext
-                items={reorderCategories.map((c) => c.id)}
-                strategy={verticalListSortingStrategy}
-              >
-                <div className="space-y-2 max-h-80 overflow-y-auto">
-                  {reorderCategories.map((cat, index) => (
-                    <ReorderCategoryItem
-                      key={cat.id}
-                      cat={cat}
-                      index={index}
-                    />
-                  ))}
-                </div>
-              </SortableContext>
-            </DndContext>
+            <p className="text-xs text-gray-500">Usá las flechas para cambiar el orden</p>
+            <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+              {reorderCategories.map((cat, index) => (
+                <ReorderCategoryItem
+                  key={cat.id}
+                  cat={cat}
+                  index={index}
+                  total={reorderCategories.length}
+                  onMoveUp={() => handleMoveCategory(index, "up")}
+                  onMoveDown={() => handleMoveCategory(index, "down")}
+                />
+              ))}
+            </div>
             <div className="flex gap-3 pt-2">
               <button
                 onClick={() => setShowReorderModal(false)}
