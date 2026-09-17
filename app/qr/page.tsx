@@ -6,7 +6,7 @@ export const metadata = {
 };
 
 export default async function QRPage() {
-  const url = "https://conto-ff.vercel.app/login";
+  const url = `${process.env.NEXT_PUBLIC_APP_URL || "https://conto-ff.vercel.app"}/login`;
 
   let qrDataUrl: string;
   try {

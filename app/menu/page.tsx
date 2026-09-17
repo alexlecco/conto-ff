@@ -571,7 +571,7 @@ export default function MenuPage() {
             </div>
             <h2 className="text-2xl font-bold text-white mb-3">Pinta Tacos</h2>
             <p className="text-sm text-white/70 leading-relaxed">
-              Hola, soy Sergio Luna y este es Pinta Tacos.
+              <strong>Hola, soy Sergio Luna</strong> y este es Pinta Tacos.
               
               Nacimos con una idea simple: compartir el sabor, la alegría y la cultura de México con nuestra gente. Hoy queremos dar un paso más y transformar Pinta Tacos en mucho más que un bar: queremos convertirlo en un bodegón mexicano, un lugar para venir a comer rico, descubrir sabores, compartir una mesa y pasarla bien.
 
