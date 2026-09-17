@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
+function getFileNameFromPublicUrl(url: string): string | null {
+  const match = url.match(/\/menu-images\/([^?]+)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const bust = request.nextUrl.searchParams.get("t");
@@ -19,6 +24,20 @@ export async function GET(request: NextRequest) {
     if (error) {
       console.error("Supabase error:", error);
       return NextResponse.json({ error: "Error loading menu" }, { status: 500 });
+    }
+
+    // Convert public URLs to signed URLs for images
+    const imageUpdates = new Map<string, string>();
+    for (const item of items || []) {
+      if (item.image_url && !item.image_url.includes("/object/sign/")) {
+        const fileName = getFileNameFromPublicUrl(item.image_url);
+        if (fileName) {
+          const { data } = await supabase.storage
+            .from("menu-images")
+            .createSignedUrl(fileName, 60 * 60 * 24 * 365);
+          if (data) imageUpdates.set(item.id, data.signedUrl);
+        }
+      }
     }
 
     // Group by category
@@ -47,7 +66,7 @@ export async function GET(request: NextRequest) {
           description: item.description,
           price: item.price,
           available: item.available,
-          image_url: item.image_url || null,
+          image_url: imageUpdates.get(item.id) || item.image_url || null,
           currency: "ARS",
           variants: [],
         })),

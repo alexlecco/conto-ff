@@ -95,6 +95,19 @@ async function fetchAllCategories() {
 
   if (error) throw error;
 
+  const imageUpdates = new Map<string, string>();
+  for (const item of items || []) {
+    if (item.image_url && !item.image_url.includes("/object/sign/")) {
+      const fileName = item.image_url.match(/\/menu-images\/([^?]+)/)?.[1];
+      if (fileName) {
+        const { data } = await supabase.storage
+          .from("menu-images")
+          .createSignedUrl(decodeURIComponent(fileName), 60 * 60 * 24 * 365);
+        if (data) imageUpdates.set(item.id, data.signedUrl);
+      }
+    }
+  }
+
   const categoryMap = new Map<string, { id: string; name: string; items: typeof items }>();
 
   for (const item of items || []) {
@@ -117,7 +130,7 @@ async function fetchAllCategories() {
       description: item.description,
       price: item.price,
       available: item.available,
-      image_url: item.image_url || null,
+      image_url: imageUpdates.get(item.id) || item.image_url || null,
       variants: [] as { id: string; name: string; price: number }[],
     })),
   }));

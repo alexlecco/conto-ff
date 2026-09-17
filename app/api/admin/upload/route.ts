@@ -75,11 +75,13 @@ export async function POST(request: Request) {
 
     if (uploadError) throw uploadError;
 
-    const { data: urlData } = supabase.storage
+    const { data: signedUrlData, error: signedUrlError } = await supabase.storage
       .from("menu-images")
-      .getPublicUrl(fileName);
+      .createSignedUrl(fileName, 60 * 60 * 24 * 365);
 
-    const imageUrl = urlData.publicUrl;
+    if (signedUrlError) throw signedUrlError;
+
+    const imageUrl = signedUrlData.signedUrl;
 
     const { error: updateError } = await supabase
       .from("menu_items")

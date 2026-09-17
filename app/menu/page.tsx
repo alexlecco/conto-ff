@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
+
 import { useSupabase } from "@/lib/supabase/use-client";
 import { useDatabase } from "@/lib/supabase/use-database";
 import type { MenuCategory, MenuItem, MenuItemVariant, CartItem } from "@/types/menu";
@@ -128,11 +128,9 @@ function MenuItemComponent({
         </div>
 
         {item.image_url && (
-          <Image
+          <img
             src={item.image_url}
             alt={item.name}
-            width={80}
-            height={80}
             className="w-20 h-20 rounded-lg object-cover shrink-0 border border-border/50 cursor-pointer"
             onClick={(e) => {
               e.stopPropagation();
