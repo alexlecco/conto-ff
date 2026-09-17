@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useSupabase } from "@/lib/supabase/use-client";
+import { useInstallPrompt } from "@/lib/use-install-prompt";
+import InstallPrompt from "@/components/install-prompt";
 
 const NAV_ITEMS = [
   { href: "/tracking", label: "Tracking", icon: "📊" },
@@ -16,6 +18,17 @@ export default function AdminNav() {
   const pathname = usePathname();
   const supabase = useSupabase();
   const [open, setOpen] = useState(false);
+  const [userType, setUserType] = useState<string>("");
+
+  const {
+    showModal,
+    isInstalled,
+    isIOSDevice,
+    deferredPrompt,
+    handleInstall,
+    handleDismiss,
+    openManual,
+  } = useInstallPrompt(userType || undefined);
 
   const handleLogout = useCallback(async () => {
     if (supabase) await supabase.auth.signOut();
@@ -26,6 +39,21 @@ export default function AdminNav() {
   useEffect(() => {
     setOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    const loadUserType = async () => {
+      if (!supabase) return;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("user_type")
+        .eq("id", user.id)
+        .single();
+      if (profile) setUserType(profile.user_type);
+    };
+    loadUserType();
+  }, [supabase]);
 
   return (
     <>
@@ -78,6 +106,19 @@ export default function AdminNav() {
               {item.label}
             </button>
           ))}
+
+          {!isInstalled && (
+            <button
+              onClick={() => {
+                setOpen(false);
+                openManual();
+              }}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors text-left"
+            >
+              <span className="text-base">📱</span>
+              Instalar app
+            </button>
+          )}
         </nav>
 
         <div className="absolute bottom-0 left-0 right-0 px-3 py-4 border-t border-gray-200">
@@ -90,6 +131,17 @@ export default function AdminNav() {
           </button>
         </div>
       </div>
+
+      {!isInstalled && (
+        <InstallPrompt
+          show={showModal}
+          isInstalled={isInstalled}
+          isIOSDevice={isIOSDevice}
+          deferredPrompt={deferredPrompt}
+          onInstall={handleInstall}
+          onDismiss={handleDismiss}
+        />
+      )}
     </>
   );
 }

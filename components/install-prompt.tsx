@@ -1,76 +1,23 @@
 "use client";
 
-import { useState, useEffect } from "react";
-
-declare global {
-  interface WindowEventMap {
-    beforeinstallprompt: BeforeInstallPromptEvent;
-  }
-}
-
-interface BeforeInstallPromptEvent extends Event {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
-}
-
-function isIOS() {
-  if (typeof navigator === "undefined") return false;
-  return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-}
-
-function isStandalone() {
-  if (typeof window === "undefined") return false;
-  return window.matchMedia("(display-mode: standalone)").matches || (navigator as Navigator & { standalone?: boolean }).standalone === true;
-}
-
-const DISMISSED_KEY = "conto_install_dismissed";
-const INSTALLED_KEY = "conto_install_shown";
-
 interface InstallPromptProps {
   show: boolean;
+  isInstalled: boolean;
+  isIOSDevice: boolean;
+  deferredPrompt: { prompt: () => Promise<void>; userChoice: Promise<{ outcome: "accepted" | "dismissed" }> } | null;
+  onInstall: () => void;
   onDismiss: () => void;
 }
 
-export default function InstallPrompt({ show, onDismiss }: InstallPromptProps) {
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  const [isIOSDevice, setIsIOSDevice] = useState(false);
-  const [installed, setInstalled] = useState(false);
-
-  useEffect(() => {
-    if (isStandalone()) {
-      setInstalled(true);
-      return;
-    }
-    setIsIOSDevice(isIOS());
-  }, []);
-
-  useEffect(() => {
-    const handler = (e: BeforeInstallPromptEvent) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-    };
-    window.addEventListener("beforeinstallprompt", handler);
-    return () => window.removeEventListener("beforeinstallprompt", handler);
-  }, []);
-
-  const handleInstall = async () => {
-    if (!deferredPrompt) return;
-    await deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === "accepted") {
-      setInstalled(true);
-      localStorage.setItem(INSTALLED_KEY, "true");
-    }
-    setDeferredPrompt(null);
-    onDismiss();
-  };
-
-  const handleDismiss = () => {
-    localStorage.setItem(DISMISSED_KEY, "true");
-    onDismiss();
-  };
-
-  if (!show || installed) return null;
+export default function InstallPrompt({
+  show,
+  isInstalled,
+  isIOSDevice,
+  deferredPrompt,
+  onInstall,
+  onDismiss,
+}: InstallPromptProps) {
+  if (!show || isInstalled) return null;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm px-6">
@@ -104,7 +51,7 @@ export default function InstallPrompt({ show, onDismiss }: InstallPromptProps) {
         <div className="px-6 pb-6 space-y-2">
           {deferredPrompt && (
             <button
-              onClick={handleInstall}
+              onClick={onInstall}
               className="w-full py-3.5 rounded-xl bg-primary hover:bg-primary-hover text-white font-semibold text-sm transition-colors"
             >
               Instalar Conto
@@ -126,7 +73,7 @@ export default function InstallPrompt({ show, onDismiss }: InstallPromptProps) {
             </div>
           )}
           <button
-            onClick={handleDismiss}
+            onClick={onDismiss}
             className="w-full py-3 rounded-xl bg-white/5 hover:bg-white/10 text-muted text-sm font-medium transition-colors"
           >
             Ahora no

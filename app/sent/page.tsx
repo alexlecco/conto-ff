@@ -1,29 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import InstallPrompt from "@/components/install-prompt";
-
-const DISMISSED_KEY = "conto_install_dismissed";
-const SHOWN_KEY = "conto_install_shown";
+import { useInstallPrompt } from "@/lib/use-install-prompt";
 
 export default function SentPage() {
   const router = useRouter();
-  const [showInstall, setShowInstall] = useState(false);
+  const {
+    showModal,
+    isInstalled,
+    isIOSDevice,
+    deferredPrompt,
+    handleInstall,
+    handleDismiss,
+  } = useInstallPrompt("regular");
 
   useEffect(() => {
     localStorage.removeItem("last_order_id");
-
-    const dismissed = localStorage.getItem(DISMISSED_KEY) === "true";
-    const alreadyShown = localStorage.getItem(SHOWN_KEY) === "true";
-
-    if (!dismissed && !alreadyShown) {
-      const timer = setTimeout(() => {
-        setShowInstall(true);
-        localStorage.setItem(SHOWN_KEY, "true");
-      }, 2000);
-      return () => clearTimeout(timer);
-    }
   }, []);
 
   return (
@@ -68,7 +62,16 @@ export default function SentPage() {
         </div>
       </div>
 
-      <InstallPrompt show={showInstall} onDismiss={() => setShowInstall(false)} />
+      {!isInstalled && (
+        <InstallPrompt
+          show={showModal}
+          isInstalled={isInstalled}
+          isIOSDevice={isIOSDevice}
+          deferredPrompt={deferredPrompt}
+          onInstall={handleInstall}
+          onDismiss={handleDismiss}
+        />
+      )}
     </div>
   );
 }
