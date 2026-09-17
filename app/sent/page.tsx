@@ -1,13 +1,29 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import InstallPrompt from "@/components/install-prompt";
+
+const DISMISSED_KEY = "conto_install_dismissed";
+const SHOWN_KEY = "conto_install_shown";
 
 export default function SentPage() {
   const router = useRouter();
+  const [showInstall, setShowInstall] = useState(false);
 
   useEffect(() => {
     localStorage.removeItem("last_order_id");
+
+    const dismissed = localStorage.getItem(DISMISSED_KEY) === "true";
+    const alreadyShown = localStorage.getItem(SHOWN_KEY) === "true";
+
+    if (!dismissed && !alreadyShown) {
+      const timer = setTimeout(() => {
+        setShowInstall(true);
+        localStorage.setItem(SHOWN_KEY, "true");
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
   }, []);
 
   return (
@@ -51,6 +67,8 @@ export default function SentPage() {
           </button>
         </div>
       </div>
+
+      <InstallPrompt show={showInstall} onDismiss={() => setShowInstall(false)} />
     </div>
   );
 }
