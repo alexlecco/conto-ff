@@ -571,9 +571,19 @@ export default function MenuPage() {
             </div>
             <h2 className="text-2xl font-bold text-white mb-3">Pinta Tacos</h2>
             <p className="text-sm text-white/70 leading-relaxed">
-              Somos un espacio de encuentro donde la pasión por la gastronomía
-              se une con la mejor vibra. Cada plato cuenta una historia, cada
-              visita se convierte en un recuerdo. Bienvenido a tu lugar favorito.
+              Hola, soy Sergio Luna y este es Pinta Tacos.
+              
+              Nacimos con una idea simple: compartir el sabor, la alegría y la cultura de México con nuestra gente. Hoy queremos dar un paso más y transformar Pinta Tacos en mucho más que un bar: queremos convertirlo en un bodegón mexicano, un lugar para venir a comer rico, descubrir sabores, compartir una mesa y pasarla bien.
+
+              Nuestra propuesta combina nuestra pasión por la comida mexicana con algo que nos identifica profundamente: Tucumán. Queremos que cada detalle tenga personalidad, desde la decoración y la música mexicana hasta los aromas de nuestra cocina llegando a la mesa.
+              
+              Estamos trabajando para mejorar nuestra carta y darle todavía más protagonismo a la comida, creando platos que tengas ganas de probar, compartir y volver a pedir. Y, por supuesto, acompañarlos con buenos tragos y una selección de tequilas que estén a la altura.
+              
+              Queremos que cuando entres sientas curiosidad, que algo te sorprenda y, sobre todo, que te vayas feliz y con ganas de volver.
+              
+              Y queremos ser parte de algo más grande: una comunidad de lugares con identidad propia, donde cada salida sea una oportunidad para descubrir algo nuevo.
+
+              Bienvenido a Pinta Tacos. 🌮🇲🇽
             </p>
           </div>
         </div>
