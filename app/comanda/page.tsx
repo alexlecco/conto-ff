@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSupabase } from "@/lib/supabase/use-client";
 import { useDatabase, type DBOrder, type OrderEvent } from "@/lib/supabase/use-database";
 import ImageModal from "@/components/image-modal";
+import EmployeeNav from "@/components/employee-nav";
 
 interface Call {
   id: string;
@@ -248,24 +249,17 @@ export default function ComandaPage() {
     <div className="min-h-screen pb-24" style={{ backgroundColor: "#fab76b" }}>
       <div className="sticky top-0 z-40 border-b border-white/20 px-4 py-4" style={{ backgroundColor: "#fab76b" }}>
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-white">
-              Comanda{employeeName && ` – ${employeeName}`}{roleLabel && ` – ${roleLabel}`}
-            </h1>
-            <p className="text-sm text-white/70">
-              {orders.length} {orders.length === 1 ? "pedido activo" : "pedidos activos"}
-            </p>
+          <div className="flex items-center gap-3">
+            <EmployeeNav />
+            <div>
+              <h1 className="text-xl font-bold text-white">
+                Comanda{employeeName && ` – ${employeeName}`}{roleLabel && ` – ${roleLabel}`}
+              </h1>
+              <p className="text-sm text-white/70">
+                {orders.length} {orders.length === 1 ? "pedido activo" : "pedidos activos"}
+              </p>
+            </div>
           </div>
-          <button
-            onClick={async () => {
-              if (supabase) await supabase.auth.signOut();
-              localStorage.clear();
-              router.push("/login");
-            }}
-            className="text-sm text-white/70 hover:text-white transition-colors"
-          >
-            Salir
-          </button>
         </div>
       </div>
 
