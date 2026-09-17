@@ -571,19 +571,15 @@ export default function MenuPage() {
             </div>
             <h2 className="text-2xl font-bold text-white mb-3">Pinta Tacos</h2>
             <p className="text-sm text-white/70 leading-relaxed">
-              <strong>Hola, soy Sergio Luna</strong> y este es Pinta Tacos.
+              <strong>Hola, soy Sergio Luna</strong> y este es Pinta Tacos. <br /><br />
               
-              Nacimos con una idea simple: compartir el sabor, la alegría y la cultura de México con nuestra gente. Hoy queremos dar un paso más y transformar Pinta Tacos en mucho más que un bar: queremos convertirlo en un bodegón mexicano, un lugar para venir a comer rico, descubrir sabores, compartir una mesa y pasarla bien.
+              Nacimos con una idea simple: compartir el sabor, la alegría y la cultura de México con nuestra gente. Hoy queremos dar un paso más y transformar Pinta Tacos en mucho más que un bar: queremos convertirlo en un bodegón mexicano, un lugar para venir a comer rico, descubrir sabores, compartir una mesa y pasarla bien.<br /><br />
 
               Nuestra propuesta combina nuestra pasión por la comida mexicana con algo que nos identifica profundamente: Tucumán. Queremos que cada detalle tenga personalidad, desde la decoración y la música mexicana hasta los aromas de nuestra cocina llegando a la mesa.
-              
-              Estamos trabajando para mejorar nuestra carta y darle todavía más protagonismo a la comida, creando platos que tengas ganas de probar, compartir y volver a pedir. Y, por supuesto, acompañarlos con buenos tragos y una selección de tequilas que estén a la altura.
-              
-              Queremos que cuando entres sientas curiosidad, que algo te sorprenda y, sobre todo, que te vayas feliz y con ganas de volver.
-              
-              Y queremos ser parte de algo más grande: una comunidad de lugares con identidad propia, donde cada salida sea una oportunidad para descubrir algo nuevo.
 
-              Bienvenido a Pinta Tacos. 🌮🇲🇽
+              Y queremos ser parte de algo más grande: una comunidad de lugares con identidad propia, donde cada salida sea una oportunidad para descubrir algo nuevo.<br /><br />
+
+              <strong>Bienvenido a Pinta Tacos. 🌮🇲🇽🍻</strong>
             </p>
           </div>
         </div>
