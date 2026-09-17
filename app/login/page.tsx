@@ -1,10 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useSupabase } from "@/lib/supabase/use-client";
+import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
-  const supabase = useSupabase();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -13,34 +12,48 @@ export default function LoginPage() {
   };
 
   const handleGoogleLogin = async () => {
-    if (!supabase) return;
     setLoading(true);
     setError(null);
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: getRedirectUrl(),
-      },
-    });
-    if (error) {
-      setError(error.message);
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: getRedirectUrl(),
+        },
+      });
+      if (error) {
+        setError(error.message);
+        setLoading(false);
+      } else if (data?.url) {
+        window.location.href = data.url;
+      }
+    } catch (e) {
+      setError(String(e));
       setLoading(false);
     }
   };
 
   const handleInstagramLogin = async () => {
-    if (!supabase) return;
     setLoading(true);
     setError(null);
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "facebook",
-      options: {
-        redirectTo: getRedirectUrl(),
-        scopes: "email,public_profile",
-      },
-    });
-    if (error) {
-      setError(error.message);
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "facebook",
+        options: {
+          redirectTo: getRedirectUrl(),
+          scopes: "email,public_profile",
+        },
+      });
+      if (error) {
+        setError(error.message);
+        setLoading(false);
+      } else if (data?.url) {
+        window.location.href = data.url;
+      }
+    } catch (e) {
+      setError(String(e));
       setLoading(false);
     }
   };
@@ -80,7 +93,7 @@ export default function LoginPage() {
           <div className="space-y-3">
             <button
               onClick={handleGoogleLogin}
-              disabled={loading || !supabase}
+              disabled={loading}
               className="w-full flex items-center justify-center gap-3 bg-white text-black font-medium py-3 px-6 rounded-full hover:bg-gray-100 transition-colors disabled:opacity-50"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -106,7 +119,7 @@ export default function LoginPage() {
 
             <button
               onClick={handleInstagramLogin}
-              disabled={loading || !supabase}
+              disabled={loading}
               className="w-full flex items-center justify-center gap-3 bg-gradient-to-r from-purple-500 via-pink-500 to-orange-400 text-white font-medium py-3 px-6 rounded-full hover:opacity-90 transition-opacity disabled:opacity-50"
             >
               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
