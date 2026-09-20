@@ -670,7 +670,7 @@ export default function AdminMenuPage() {
                       {/* Image upload */}
                       <div className="pl-6 flex items-center gap-2">
                         {getLocalValue(cat.id, item.id, "image_url", item.image_url) ? (
-                          <div className="relative group">
+                          <div className="flex items-center gap-2">
                             <img
                               src={getLocalValue(cat.id, item.id, "image_url", item.image_url) as string}
                               alt={item.name}
@@ -680,64 +680,69 @@ export default function AdminMenuPage() {
                                 alt: item.name,
                               })}
                             />
-                            <label
-                              className="absolute -top-1 -right-1 w-4 h-4 bg-blue-500 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                              title="Reemplazar foto"
-                            >
-                              <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                              </svg>
-                              <input
-                                type="file"
-                                accept="image/*"
-                                className="hidden"
-                                onChange={(e) => {
-                                  const file = e.target.files?.[0];
-                                  if (!file) return;
-                                  const previewUrl = URL.createObjectURL(file);
-                                  setPendingImages((prev) => ({ ...prev, [item.id]: file }));
-                                  setImagePreviewUrls((prev) => ({ ...prev, [item.id]: previewUrl }));
-                                  setCategories((prev) =>
-                                    prev.map((c) =>
-                                      c.id === cat.id
-                                        ? { ...c, items: c.items.map((i) => i.id === item.id ? { ...i, image_url: previewUrl } : i) }
-                                        : c
-                                    )
-                                  );
+                            <div className="flex flex-col gap-1">
+                              <label
+                                className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center cursor-pointer hover:bg-blue-100 transition-colors"
+                                title="Reemplazar foto"
+                              >
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (!file) return;
+                                    const previewUrl = URL.createObjectURL(file);
+                                    setPendingImages((prev) => ({ ...prev, [item.id]: file }));
+                                    setImagePreviewUrls((prev) => ({ ...prev, [item.id]: previewUrl }));
+                                    setCategories((prev) =>
+                                      prev.map((c) =>
+                                        c.id === cat.id
+                                          ? { ...c, items: c.items.map((i) => i.id === item.id ? { ...i, image_url: previewUrl } : i) }
+                                          : c
+                                      )
+                                    );
+                                    addPendingChange({
+                                      categoryId: cat.id,
+                                      itemId: item.id,
+                                      field: "image_url",
+                                      value: previewUrl,
+                                    });
+                                  }}
+                                />
+                              </label>
+                              <button
+                                onClick={() => {
                                   addPendingChange({
                                     categoryId: cat.id,
                                     itemId: item.id,
                                     field: "image_url",
-                                    value: previewUrl,
+                                    value: null,
                                   });
+                                  setCategories((prev) =>
+                                    prev.map((c) =>
+                                      c.id === cat.id
+                                        ? {
+                                            ...c,
+                                            items: c.items.map((i) =>
+                                              i.id === item.id ? { ...i, image_url: null } : i
+                                            ),
+                                          }
+                                        : c
+                                    )
+                                  );
                                 }}
-                              />
-                            </label>
-                            <button
-                              onClick={() => {
-                                addPendingChange({
-                                  categoryId: cat.id,
-                                  itemId: item.id,
-                                  field: "image_url",
-                                  value: null,
-                                });
-                                setCategories((prev) =>
-                                  prev.map((c) =>
-                                    c.id === cat.id
-                                      ? {
-                                          ...c,
-                                          items: c.items.map((i) =>
-                                            i.id === item.id ? { ...i, image_url: null } : i
-                                          ),
-                                        }
-                                      : c
-                                  )
-                                );
-                              }}
-                              className="absolute -bottom-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                              ✕
-                            </button>
+                                className="w-7 h-7 rounded-lg bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-100 transition-colors"
+                                title="Eliminar foto"
+                              >
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              </button>
+                            </div>
                           </div>
                         ) : (
                           <label className="w-16 h-16 rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-blue-400 transition-colors">
