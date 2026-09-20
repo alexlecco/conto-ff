@@ -680,6 +680,39 @@ export default function AdminMenuPage() {
                                 alt: item.name,
                               })}
                             />
+                            <label
+                              className="absolute -top-1 -right-1 w-4 h-4 bg-blue-500 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                              title="Reemplazar foto"
+                            >
+                              <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                              </svg>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (!file) return;
+                                  const previewUrl = URL.createObjectURL(file);
+                                  setPendingImages((prev) => ({ ...prev, [item.id]: file }));
+                                  setImagePreviewUrls((prev) => ({ ...prev, [item.id]: previewUrl }));
+                                  setCategories((prev) =>
+                                    prev.map((c) =>
+                                      c.id === cat.id
+                                        ? { ...c, items: c.items.map((i) => i.id === item.id ? { ...i, image_url: previewUrl } : i) }
+                                        : c
+                                    )
+                                  );
+                                  addPendingChange({
+                                    categoryId: cat.id,
+                                    itemId: item.id,
+                                    field: "image_url",
+                                    value: previewUrl,
+                                  });
+                                }}
+                              />
+                            </label>
                             <button
                               onClick={() => {
                                 addPendingChange({
@@ -701,7 +734,7 @@ export default function AdminMenuPage() {
                                   )
                                 );
                               }}
-                              className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                              className="absolute -bottom-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                             >
                               ✕
                             </button>
