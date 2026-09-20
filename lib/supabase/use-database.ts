@@ -373,6 +373,45 @@ export function useDatabase() {
     [adminMenuRequest]
   );
 
+  // ─── Bar settings ──────────────────────────────────────────────
+
+  const toggleNoTableMode = useCallback(
+    async (enabled: boolean) => {
+      return adminMenuRequest({ type: "toggle-no-table-mode", enabled });
+    },
+    [adminMenuRequest]
+  );
+
+  const fetchNoTableMode = useCallback(async () => {
+    const res = await fetch(`/api/menu?t=${Date.now()}`);
+    if (!res.ok) return false;
+    const data = await res.json();
+    return data.noTableMode ?? false;
+  }, []);
+
+  // ─── Category CRUD ─────────────────────────────────────────────
+
+  const createCategory = useCallback(
+    async (name: string, visibleInNoTableMode?: boolean) => {
+      return adminMenuRequest({ type: "create-category", name, visibleInNoTableMode });
+    },
+    [adminMenuRequest]
+  );
+
+  const updateCategory = useCallback(
+    async (categoryId: string, name?: string, visibleInNoTableMode?: boolean) => {
+      return adminMenuRequest({ type: "update-category", categoryId, name, visibleInNoTableMode });
+    },
+    [adminMenuRequest]
+  );
+
+  const deleteCategory = useCallback(
+    async (categoryId: string) => {
+      return adminMenuRequest({ type: "delete-category", categoryId });
+    },
+    [adminMenuRequest]
+  );
+
   // ─── Menu real-time broadcast ─────────────────────────────────
 
   const broadcastMenuUpdate = useCallback(() => {
@@ -525,6 +564,13 @@ export function useDatabase() {
     reorderMenuItems,
     reorderCategories,
     fetchMenu,
+    // Bar settings
+    toggleNoTableMode,
+    fetchNoTableMode,
+    // Categories
+    createCategory,
+    updateCategory,
+    deleteCategory,
     // Menu real-time
     broadcastMenuUpdate,
     subscribeToMenuUpdates,

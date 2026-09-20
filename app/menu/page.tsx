@@ -188,6 +188,7 @@ export default function MenuPage() {
   const [showBarInfo, setShowBarInfo] = useState(false);
   const callSoundRef = useRef<HTMLAudioElement | null>(null);
   const [userId, setUserId] = useState("");
+  const [noTableMode, setNoTableMode] = useState(false);
 
   useEffect(() => {
     const loadMenu = async () => {
@@ -251,9 +252,11 @@ export default function MenuPage() {
 
       const response = await fetch("/api/menu");
       const data = await response.json();
-      setMenu(data);
-      if (data.length > 0) {
-        setActiveCategory(data[0].id);
+      setMenu(data.categories || data);
+      setNoTableMode(data.noTableMode ?? false);
+      const menuData = data.categories || data;
+      if (menuData.length > 0) {
+        setActiveCategory(menuData[0].id);
       }
       setLoading(false);
     };
@@ -263,7 +266,8 @@ export default function MenuPage() {
     const interval = setInterval(async () => {
       const response = await fetch(`/api/menu?t=${Date.now()}`);
       const data = await response.json();
-      setMenu(data);
+      setMenu(data.categories || data);
+      setNoTableMode(data.noTableMode ?? false);
     }, 10000);
 
     return () => clearInterval(interval);
@@ -273,7 +277,8 @@ export default function MenuPage() {
     const unsubscribe = subscribeToMenuUpdates(async () => {
       const response = await fetch(`/api/menu?t=${Date.now()}`);
       const data = await response.json();
-      setMenu(data);
+      setMenu(data.categories || data);
+      setNoTableMode(data.noTableMode ?? false);
     });
     return unsubscribe;
   }, [subscribeToMenuUpdates]);
@@ -373,18 +378,20 @@ export default function MenuPage() {
             </button>
           </div>
           <div className="flex items-center gap-3 mt-1">
-            <button
-              onClick={() => {
-                setNewTableInput(String(tableNumber));
-                setShowTableModal(true);
-              }}
-              className="text-sm text-muted hover:text-white transition-colors flex items-center gap-1"
-            >
-              <span>Mesa {tableNumber || "?"}</span>
-              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-              </svg>
-            </button>
+            {!noTableMode && (
+              <button
+                onClick={() => {
+                  setNewTableInput(String(tableNumber));
+                  setShowTableModal(true);
+                }}
+                className="text-sm text-muted hover:text-white transition-colors flex items-center gap-1"
+              >
+                <span>Mesa {tableNumber || "?"}</span>
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                </svg>
+              </button>
+            )}
             <span className="text-sm text-white">{customerName}</span>
             <button
               onClick={() => setShowCallModal(true)}

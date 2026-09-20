@@ -14,6 +14,26 @@ export async function GET(request: NextRequest) {
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
+    // Check no_table_mode
+    const { data: settings } = await supabase
+      .from("bar_settings")
+      .select("no_table_mode")
+      .eq("bar_id", "bar-02-pin")
+      .single();
+
+    const noTableMode = settings?.no_table_mode ?? false;
+
+    // Fetch category info
+    const { data: catRows } = await supabase
+      .from("categories")
+      .select("id, name, visible_in_no_table_mode")
+      .eq("bar_id", "bar-02-pin");
+
+    const catMap = new Map<string, { name: string; visibleInNoTableMode: boolean }>();
+    for (const row of catRows || []) {
+      catMap.set(row.id, { name: row.name, visibleInNoTableMode: row.visible_in_no_table_mode });
+    }
+
     const { data: items, error } = await supabase
       .from("menu_items")
       .select("*")
@@ -40,14 +60,23 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Group by category
-    const categoryMap = new Map<string, { id: string; name: string; items: typeof items }>();
+    // Filter items by no_table_mode
+    const filteredItems = noTableMode
+      ? (items || []).filter((item) => {
+          const catInfo = catMap.get(item.category_id);
+          return catInfo?.visibleInNoTableMode ?? false;
+        })
+      : items || [];
 
-    for (const item of items || []) {
+    // Group by category
+    const categoryMap = new Map<string, { id: string; name: string; items: typeof filteredItems }>();
+
+    for (const item of filteredItems) {
       if (!categoryMap.has(item.category_id)) {
+        const catInfo = catMap.get(item.category_id);
         categoryMap.set(item.category_id, {
           id: item.category_id,
-          name: getCategoryName(item.category_id),
+          name: catInfo?.name || item.category_id,
           items: [],
         });
       }
@@ -72,30 +101,11 @@ export async function GET(request: NextRequest) {
         })),
     }));
 
-    return NextResponse.json(categories);
+    return NextResponse.json({ categories, noTableMode });
   } catch {
     return NextResponse.json(
       { error: "Error loading menu" },
       { status: 500 }
     );
   }
-}
-
-function getCategoryName(id: string): string {
-  const names: Record<string, string> = {
-    "entradas": "Entradas",
-    "tacos": "Tacos",
-    "burritos": "Burritos",
-    "completas": "Completas",
-    "ensaladas": "Ensaladas",
-    "postres": "Postres",
-    "bebidas": "Bebidas",
-    "cervezas": "Cervezas",
-    "tragos": "Tragos",
-    "vinos": "Vinos",
-    "sin-alcohol": "Sin Alcohol",
-    "extras": "Extras",
-    "picadas": "Picadas",
-  };
-  return names[id] || id;
 }

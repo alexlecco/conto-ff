@@ -90,6 +90,10 @@ export default function AdminMenuPage() {
     reorderCategories: reorderCategoriesApi,
     fetchMenu,
     broadcastMenuUpdate,
+    toggleNoTableMode,
+    createCategory: createCategoryApi,
+    updateCategory: updateCategoryApi,
+    deleteCategory: deleteCategoryApi,
   } = useDatabase();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -104,15 +108,22 @@ export default function AdminMenuPage() {
   const [modalImage, setModalImage] = useState<{ src: string; alt: string } | null>(null);
   const [showReorderModal, setShowReorderModal] = useState(false);
   const [reorderCategories, setReorderCategories] = useState<Category[]>([]);
+  const [noTableMode, setNoTableMode] = useState(false);
+  const [showAddCategory, setShowAddCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [editingCategory, setEditingCategory] = useState<{ id: string; name: string } | null>(null);
 
   const loadMenu = useCallback(async () => {
-    const data = await fetchMenu();
-    setCategories(data);
-    if (data.length > 0 && !expandedCategory) {
-      setExpandedCategory(data[0].id);
+    const response = await fetch(`/api/menu?t=${Date.now()}`);
+    const data = await response.json();
+    const menuData = data.categories || data;
+    setCategories(menuData);
+    setNoTableMode(data.noTableMode ?? false);
+    if (menuData.length > 0 && !expandedCategory) {
+      setExpandedCategory(menuData[0].id);
     }
     setLoading(false);
-  }, [fetchMenu, expandedCategory]);
+  }, [expandedCategory]);
 
   useEffect(() => {
     const init = async () => {
@@ -336,6 +347,53 @@ export default function AdminMenuPage() {
     }
   };
 
+  const handleToggleNoTableMode = async () => {
+    const newValue = !noTableMode;
+    setNoTableMode(newValue);
+    try {
+      await toggleNoTableMode(newValue);
+      broadcastMenuUpdate();
+    } catch (err) {
+      console.error("Failed to toggle no_table_mode:", err);
+      setNoTableMode(!newValue);
+    }
+  };
+
+  const handleCreateCategory = async () => {
+    if (!newCategoryName.trim()) return;
+    try {
+      const categories = await createCategoryApi(newCategoryName.trim(), false);
+      setCategories(categories);
+      broadcastMenuUpdate();
+      setNewCategoryName("");
+      setShowAddCategory(false);
+    } catch (err) {
+      console.error("Failed to create category:", err);
+    }
+  };
+
+  const handleUpdateCategory = async () => {
+    if (!editingCategory || !editingCategory.name.trim()) return;
+    try {
+      const categories = await updateCategoryApi(editingCategory.id, editingCategory.name.trim());
+      setCategories(categories);
+      broadcastMenuUpdate();
+      setEditingCategory(null);
+    } catch (err) {
+      console.error("Failed to update category:", err);
+    }
+  };
+
+  const handleDeleteCategory = async (categoryId: string) => {
+    try {
+      const categories = await deleteCategoryApi(categoryId);
+      setCategories(categories);
+      broadcastMenuUpdate();
+    } catch (err) {
+      console.error("Failed to delete category:", err);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -378,6 +436,12 @@ export default function AdminMenuPage() {
             >
               Editar orden
             </button>
+            <button
+              onClick={() => setShowAddCategory(true)}
+              className="flex-shrink-0 text-xs font-medium text-green-600 hover:text-green-800 px-2 py-1.5"
+            >
+              + Categoría
+            </button>
             {categories.map((cat) => (
               <button
                 key={cat.id}
@@ -392,6 +456,23 @@ export default function AdminMenuPage() {
               </button>
             ))}
           </div>
+        </div>
+
+        {/* No table mode switch */}
+        <div className="flex items-center justify-between mt-3 px-1">
+          <span className="text-xs font-medium text-gray-700">Modo sin mesa</span>
+          <button
+            onClick={handleToggleNoTableMode}
+            className={`relative w-11 h-6 rounded-full transition-colors ${
+              noTableMode ? "bg-green-500" : "bg-gray-300"
+            }`}
+          >
+            <span
+              className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                noTableMode ? "translate-x-5" : ""
+              }`}
+            />
+          </button>
         </div>
       </div>
 
@@ -835,6 +916,81 @@ export default function AdminMenuPage() {
           alt={modalImage.alt}
           onClose={() => setModalImage(null)}
         />
+      )}
+
+      {/* Add category modal */}
+      {showAddCategory && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-sm bg-white rounded-2xl p-6 space-y-4">
+            <h3 className="text-lg font-semibold text-gray-900">Nueva categoría</h3>
+            <input
+              type="text"
+              value={newCategoryName}
+              onChange={(e) => setNewCategoryName(e.target.value)}
+              placeholder="Nombre de la categoría"
+              className="w-full text-sm border border-gray-300 rounded-xl px-3 py-2.5 text-gray-900 focus:outline-none focus:border-gray-900"
+              autoFocus
+              onKeyDown={(e) => { if (e.key === "Enter") handleCreateCategory(); }}
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setShowAddCategory(false); setNewCategoryName(""); }}
+                className="flex-1 text-sm py-3 rounded-xl bg-gray-100 text-gray-700 font-medium hover:bg-gray-200 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleCreateCategory}
+                disabled={!newCategoryName.trim()}
+                className="flex-1 text-sm py-3 rounded-xl bg-gray-900 text-white font-medium hover:bg-gray-800 transition-colors disabled:opacity-50"
+              >
+                Crear
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit category modal */}
+      {editingCategory && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-sm bg-white rounded-2xl p-6 space-y-4">
+            <h3 className="text-lg font-semibold text-gray-900">Editar categoría</h3>
+            <input
+              type="text"
+              value={editingCategory.name}
+              onChange={(e) => setEditingCategory({ ...editingCategory, name: e.target.value })}
+              className="w-full text-sm border border-gray-300 rounded-xl px-3 py-2.5 text-gray-900 focus:outline-none focus:border-gray-900"
+              autoFocus
+              onKeyDown={(e) => { if (e.key === "Enter") handleUpdateCategory(); }}
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  handleDeleteCategory(editingCategory.id);
+                  setEditingCategory(null);
+                }}
+                className="text-sm py-3 px-4 rounded-xl bg-red-50 text-red-600 font-medium hover:bg-red-100 transition-colors"
+              >
+                Eliminar
+              </button>
+              <div className="flex-1" />
+              <button
+                onClick={() => setEditingCategory(null)}
+                className="text-sm py-3 px-4 rounded-xl bg-gray-100 text-gray-700 font-medium hover:bg-gray-200 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleUpdateCategory}
+                disabled={!editingCategory.name.trim()}
+                className="text-sm py-3 px-4 rounded-xl bg-gray-900 text-white font-medium hover:bg-gray-800 transition-colors disabled:opacity-50"
+              >
+                Guardar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

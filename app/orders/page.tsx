@@ -107,6 +107,7 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [lastStatusChange, setLastStatusChange] = useState<string | null>(null);
   const [editingNote, setEditingNote] = useState<{ itemId: string; currentNote: string } | null>(null);
+  const [readyOrder, setReadyOrder] = useState<DBOrder | null>(null);
 
   const hydrateOrder = useCallback(
     async (order: DBOrder): Promise<DBOrder> => {
@@ -142,6 +143,7 @@ export default function OrdersPage() {
         if (updated.status === "delivered") {
           setOrders((prev) => prev.filter((o) => o.id !== updated.id));
           playNotificationSound();
+          setReadyOrder((prev) => (prev?.id === updated.id ? null : prev));
           setLastStatusChange("Tu pedido fue entregado");
           setTimeout(() => setLastStatusChange(null), 5000);
         } else {
@@ -153,6 +155,10 @@ export default function OrdersPage() {
           const label = statusLabels[hydrated.status] || hydrated.status;
           setLastStatusChange(`Tu pedido ahora está: ${label}`);
           setTimeout(() => setLastStatusChange(null), 5000);
+
+          if (hydrated.status === "ready") {
+            setReadyOrder(hydrated);
+          }
         }
       }
     });
@@ -323,6 +329,40 @@ export default function OrdersPage() {
           onSave={handleSaveNote}
           onClose={() => setEditingNote(null)}
         />
+      )}
+
+      {readyOrder && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm px-6">
+          <div className="w-full max-w-sm bg-[#1a1a1a] rounded-3xl overflow-hidden shadow-2xl border border-white/10">
+            <div className="relative h-32 bg-gradient-to-br from-green-500/20 via-green-500/10 to-transparent flex items-center justify-center">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(34,197,94,0.15),transparent_70%)]" />
+              <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center relative z-10">
+                <svg className="w-8 h-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+            </div>
+            <div className="px-6 py-6 text-center space-y-3">
+              <h2 className="text-xl font-bold text-white">Tu pedido está listo</h2>
+              <p className="text-sm text-muted">Pasá a buscarlo a la ventana de entrada</p>
+              <div className="bg-white/5 rounded-xl p-3 text-left space-y-1">
+                {readyOrder.items?.map((item) => (
+                  <p key={item.id} className="text-sm text-white">
+                    {item.quantity}x {item.product_name}
+                  </p>
+                ))}
+              </div>
+            </div>
+            <div className="px-6 pb-6">
+              <button
+                onClick={() => setReadyOrder(null)}
+                className="w-full py-3.5 rounded-xl bg-primary hover:bg-primary-hover text-white font-semibold text-sm transition-colors"
+              >
+                Entendido
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

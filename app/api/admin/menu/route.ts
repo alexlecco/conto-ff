@@ -37,6 +37,29 @@ interface ReorderCategoriesPayload {
   categoryIds: string[];
 }
 
+interface ToggleNoTableModePayload {
+  type: "toggle-no-table-mode";
+  enabled: boolean;
+}
+
+interface CreateCategoryPayload {
+  type: "create-category";
+  name: string;
+  visibleInNoTableMode?: boolean;
+}
+
+interface UpdateCategoryPayload {
+  type: "update-category";
+  categoryId: string;
+  name?: string;
+  visibleInNoTableMode?: boolean;
+}
+
+interface DeleteCategoryPayload {
+  type: "delete-category";
+  categoryId: string;
+}
+
 function getSupabase() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -84,8 +107,23 @@ async function requireAdmin(request: Request) {
   return { userId };
 }
 
+async function getCategoryNameMap(supabase: ReturnType<typeof getSupabase>) {
+  const { data: catRows } = await supabase
+    .from("categories")
+    .select("id, name, visible_in_no_table_mode")
+    .eq("bar_id", "bar-02-pin");
+
+  const map = new Map<string, { name: string; visibleInNoTableMode: boolean }>();
+  for (const row of catRows || []) {
+    map.set(row.id, { name: row.name, visibleInNoTableMode: row.visible_in_no_table_mode });
+  }
+  return map;
+}
+
 async function fetchAllCategories() {
   const supabase = getSupabase();
+  const catMap = await getCategoryNameMap(supabase);
+
   const { data: items, error } = await supabase
     .from("menu_items")
     .select("*")
@@ -112,9 +150,10 @@ async function fetchAllCategories() {
 
   for (const item of items || []) {
     if (!categoryMap.has(item.category_id)) {
+      const catInfo = catMap.get(item.category_id);
       categoryMap.set(item.category_id, {
         id: item.category_id,
-        name: getCategoryName(item.category_id),
+        name: catInfo?.name || item.category_id,
         items: [],
       });
     }
@@ -296,6 +335,70 @@ export async function PUT(request: Request) {
         }
       }
 
+      const categories = await fetchAllCategories();
+      return NextResponse.json({ success: true, categories });
+    }
+
+    if (body.type === "toggle-no-table-mode") {
+      const payload = body as ToggleNoTableModePayload;
+      const { error } = await supabase
+        .from("bar_settings")
+        .upsert({ bar_id: "bar-02-pin", no_table_mode: payload.enabled });
+      if (error) throw error;
+      const categories = await fetchAllCategories();
+      return NextResponse.json({ success: true, categories });
+    }
+
+    if (body.type === "create-category") {
+      const payload = body as CreateCategoryPayload;
+      const slug = payload.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "");
+      const { data: existing } = await supabase
+        .from("categories")
+        .select("sort_order")
+        .eq("bar_id", "bar-02-pin")
+        .order("sort_order", { ascending: false })
+        .limit(1);
+      const maxOrder = existing?.[0]?.sort_order ?? -1;
+      const { error } = await supabase.from("categories").insert({
+        id: slug,
+        bar_id: "bar-02-pin",
+        name: payload.name,
+        sort_order: maxOrder + 1,
+        visible_in_no_table_mode: payload.visibleInNoTableMode ?? false,
+      });
+      if (error) throw error;
+      const categories = await fetchAllCategories();
+      return NextResponse.json({ success: true, categories });
+    }
+
+    if (body.type === "update-category") {
+      const payload = body as UpdateCategoryPayload;
+      const update: Record<string, unknown> = {};
+      if (payload.name !== undefined) update.name = payload.name;
+      if (payload.visibleInNoTableMode !== undefined) update.visible_in_no_table_mode = payload.visibleInNoTableMode;
+      if (Object.keys(update).length > 0) {
+        const { error } = await supabase
+          .from("categories")
+          .update(update)
+          .eq("id", payload.categoryId)
+          .eq("bar_id", "bar-02-pin");
+        if (error) throw error;
+      }
+      const categories = await fetchAllCategories();
+      return NextResponse.json({ success: true, categories });
+    }
+
+    if (body.type === "delete-category") {
+      const payload = body as DeleteCategoryPayload;
+      const { error } = await supabase
+        .from("categories")
+        .delete()
+        .eq("id", payload.categoryId)
+        .eq("bar_id", "bar-02-pin");
+      if (error) throw error;
       const categories = await fetchAllCategories();
       return NextResponse.json({ success: true, categories });
     }

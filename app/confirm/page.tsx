@@ -68,6 +68,7 @@ export default function ConfirmPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionTime, setSubmissionTime] = useState<Date | null>(null);
   const [editingNote, setEditingNote] = useState<{ index: number; currentNote: string } | null>(null);
+  const [noTableMode, setNoTableMode] = useState(false);
 
   useEffect(() => {
     const init = async () => {
@@ -75,13 +76,24 @@ export default function ConfirmPage() {
       const savedCart = localStorage.getItem("cart");
       const savedTable = localStorage.getItem("table_number");
 
-      if (!savedCart || !savedTable) {
+      if (!savedCart) {
+        router.push("/menu");
+        return;
+      }
+
+      // Fetch no_table_mode
+      const response = await fetch(`/api/menu?t=${Date.now()}`);
+      const data = await response.json();
+      const isNoTable = data.noTableMode ?? false;
+      setNoTableMode(isNoTable);
+
+      if (!savedTable && !isNoTable) {
         router.push("/menu");
         return;
       }
 
       setCart(JSON.parse(savedCart));
-      setTableNumber(parseInt(savedTable, 10));
+      setTableNumber(savedTable ? parseInt(savedTable, 10) : 0);
 
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
