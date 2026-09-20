@@ -68,8 +68,18 @@ export async function GET(request: NextRequest) {
         })
       : items || [];
 
-    // Group by category
+    // Group by category — start with all categories from the categories table
     const categoryMap = new Map<string, { id: string; name: string; items: typeof filteredItems }>();
+
+    for (const row of catRows || []) {
+      if (!noTableMode || row.visible_in_no_table_mode) {
+        categoryMap.set(row.id, {
+          id: row.id,
+          name: row.name,
+          items: [],
+        });
+      }
+    }
 
     for (const item of filteredItems) {
       if (!categoryMap.has(item.category_id)) {

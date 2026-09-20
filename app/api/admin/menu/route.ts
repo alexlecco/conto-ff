@@ -148,6 +148,11 @@ async function fetchAllCategories() {
 
   const categoryMap = new Map<string, { id: string; name: string; items: typeof items }>();
 
+  // Start with all categories from the categories table (including empty ones)
+  for (const [id, info] of catMap) {
+    categoryMap.set(id, { id, name: info.name, items: [] });
+  }
+
   for (const item of items || []) {
     if (!categoryMap.has(item.category_id)) {
       const catInfo = catMap.get(item.category_id);
