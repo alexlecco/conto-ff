@@ -137,7 +137,7 @@ export default function CheckinPage() {
               placeholder="Número de mesa"
               min="1"
               max="100"
-              className="w-full text-center text-4xl font-bold bg-card border border-border rounded-2xl py-6 px-4 text-white placeholder-muted/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              className="w-full text-center text-4xl font-bold bg-white/10 border border-white/20 rounded-2xl py-6 px-4 text-white placeholder-white/40 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               autoFocus
             />
           </div>

@@ -502,7 +502,7 @@ export default function AdminMenuPage() {
                     value={newItemName}
                     onChange={(e) => setNewItemName(e.target.value)}
                     placeholder="Nombre del producto"
-                    className="w-full text-sm bg-white border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
+                    className="w-full text-sm bg-gray-100 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
                     autoFocus
                   />
                   <input
@@ -510,7 +510,7 @@ export default function AdminMenuPage() {
                     value={newItemPrice}
                     onChange={(e) => setNewItemPrice(e.target.value)}
                     placeholder="Precio (opcional)"
-                    className="w-full text-sm bg-white border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
+                    className="w-full text-sm bg-gray-100 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
                   />
                   <div className="flex gap-2">
                     <button
@@ -586,7 +586,7 @@ export default function AdminMenuPage() {
                               value: e.target.value,
                             });
                           }}
-                          className="flex-1 text-sm font-medium text-gray-900 bg-transparent border-b border-gray-200 focus:border-gray-900 focus:outline-none"
+                          className="flex-1 text-sm font-medium text-gray-900 bg-gray-100 border-b border-gray-300 focus:border-gray-900 focus:outline-none"
                         />
 
                         <button
@@ -663,7 +663,7 @@ export default function AdminMenuPage() {
                             });
                           }}
                           placeholder="Descripción (opcional)"
-                          className="w-full text-xs text-gray-600 bg-transparent border-b border-gray-200 focus:border-gray-900 focus:outline-none placeholder:text-gray-400"
+                          className="w-full text-xs text-gray-600 bg-gray-100 border-b border-gray-300 focus:border-gray-900 focus:outline-none placeholder:text-gray-400"
                         />
                       </div>
 
@@ -838,7 +838,7 @@ export default function AdminMenuPage() {
                                     variantId: v.id,
                                   });
                                 }}
-                                className="w-24 text-xs text-right text-gray-900 bg-gray-50 rounded px-2 py-1 border border-gray-200 focus:border-gray-900 focus:outline-none"
+                                className="w-24 text-xs text-right text-gray-900 bg-gray-100 rounded px-2 py-1 border border-gray-300 focus:border-gray-900 focus:outline-none"
                               />
                             </div>
                           ))}
@@ -966,7 +966,7 @@ export default function AdminMenuPage() {
               value={newCategoryName}
               onChange={(e) => setNewCategoryName(e.target.value)}
               placeholder="Nombre de la categoría"
-              className="w-full text-sm border border-gray-300 rounded-xl px-3 py-2.5 text-gray-900 focus:outline-none focus:border-gray-900"
+              className="w-full text-sm bg-gray-100 border border-gray-300 rounded-xl px-3 py-2.5 text-gray-900 focus:outline-none focus:border-gray-900"
               autoFocus
               onKeyDown={(e) => { if (e.key === "Enter") handleCreateCategory(); }}
             />
@@ -998,7 +998,7 @@ export default function AdminMenuPage() {
               type="text"
               value={editingCategory.name}
               onChange={(e) => setEditingCategory({ ...editingCategory, name: e.target.value })}
-              className="w-full text-sm border border-gray-300 rounded-xl px-3 py-2.5 text-gray-900 focus:outline-none focus:border-gray-900"
+              className="w-full text-sm bg-gray-100 border border-gray-300 rounded-xl px-3 py-2.5 text-gray-900 focus:outline-none focus:border-gray-900"
               autoFocus
               onKeyDown={(e) => { if (e.key === "Enter") handleUpdateCategory(); }}
             />

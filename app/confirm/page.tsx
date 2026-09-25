@@ -37,7 +37,7 @@ function NoteModal({
           placeholder="Ej: carne a punto, solo mayonesa y tomate..."
           rows={3}
           maxLength={200}
-          className="w-full text-sm bg-background border border-border rounded-xl p-3 text-white placeholder-muted/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors resize-none"
+          className="w-full text-sm bg-white/10 border border-white/20 rounded-xl p-3 text-white placeholder-white/40 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors resize-none"
           autoFocus
         />
 

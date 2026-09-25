@@ -489,7 +489,7 @@ export default function MenuPage() {
               placeholder="Número de mesa"
               min="1"
               max="100"
-              className="w-full text-center text-3xl font-bold bg-background border border-border rounded-xl py-4 px-4 text-white placeholder-muted/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              className="w-full text-center text-3xl font-bold bg-white/10 border border-white/20 rounded-xl py-4 px-4 text-white placeholder-white/40 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               autoFocus
               onKeyDown={(e) => {
                 if (e.key === "Enter") handleTableChange();
@@ -528,7 +528,7 @@ export default function MenuPage() {
               value={callMessage}
               onChange={(e) => setCallMessage(e.target.value)}
               placeholder="Mensaje opcional (ej: necesito ayuda con el pedido)"
-              className="w-full text-sm bg-card border border-border rounded-xl px-3 py-2 text-white placeholder:text-muted focus:outline-none focus:border-primary resize-none h-20"
+              className="w-full text-sm bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-white placeholder:text-white/40 focus:outline-none focus:border-primary resize-none h-20"
             />
             <div className="flex gap-3">
               <button
