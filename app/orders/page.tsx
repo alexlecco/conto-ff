@@ -250,7 +250,7 @@ export default function OrdersPage() {
                   </div>
                   <div className="text-right">
                     <span className="text-sm text-muted">
-                      Mesa {order.table_number}
+                      {order.table_number === 0 ? "Ventanilla" : `Mesa ${order.table_number}`}
                     </span>
                     <span className="text-xs text-muted block">
                       {new Date(order.created_at).toLocaleTimeString("es-AR", {

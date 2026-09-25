@@ -119,7 +119,7 @@ export default function TrackingPage() {
         todayStart.setHours(0, 0, 0, 0);
         if (orderDate >= todayStart) {
           setOrders((prev) => [hydrated, ...prev]);
-          toast(`Nuevo pedido: ${hydrated.customer_name} - Mesa ${hydrated.table_number}`);
+          toast(`Nuevo pedido: ${hydrated.customer_name} - ${hydrated.table_number === 0 ? "Ventanilla" : `Mesa ${hydrated.table_number}`}`);
         }
       } else if (event.type === "UPDATE") {
         const hydrated = await hydrateOrder(event.order);
@@ -132,7 +132,7 @@ export default function TrackingPage() {
           delivered: "Entregado",
         };
         if (statusLabel[hydrated.status]) {
-          toast(`Mesa ${hydrated.table_number}: ${statusLabel[hydrated.status]}`);
+          toast(`${hydrated.table_number === 0 ? "Ventanilla" : `Mesa ${hydrated.table_number}`}: ${statusLabel[hydrated.status]}`);
         }
       }
     });
@@ -241,7 +241,7 @@ export default function TrackingPage() {
                   </div>
                   <div className="text-right">
                     <span className="font-bold text-gray-900">
-                      Mesa {order.table_number}
+                      {order.table_number === 0 ? "Ventanilla" : `Mesa ${order.table_number}`}
                     </span>
                     <span className="text-xs text-gray-500 block">
                       {new Date(order.created_at).toLocaleTimeString("es-AR", {

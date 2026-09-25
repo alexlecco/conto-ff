@@ -522,7 +522,7 @@ export default function MenuPage() {
           <div className="w-full max-w-lg bg-background rounded-t-2xl p-6 space-y-4">
             <h3 className="text-lg font-bold text-white">Llamar al mozo</h3>
             <p className="text-sm text-muted">
-              Mesa {tableNumber || "?"} · {customerName}
+              {noTableMode ? "Ventanilla" : `Mesa ${tableNumber || "?"}`} · {customerName}
             </p>
             <textarea
               value={callMessage}

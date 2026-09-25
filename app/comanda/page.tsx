@@ -288,7 +288,7 @@ export default function ComandaPage() {
                   </div>
                   <div className="text-right">
                     <span className="font-bold text-gray-900">
-                      Mesa {order.table_number}
+                      {order.table_number === 0 ? "Ventanilla" : `Mesa ${order.table_number}`}
                     </span>
                     <span className="text-xs text-gray-500 block">
                       {new Date(order.created_at).toLocaleTimeString("es-AR", {
