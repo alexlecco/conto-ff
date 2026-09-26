@@ -26,6 +26,7 @@ export interface CartItem {
   variant: MenuItemVariant | null;
   quantity: number;
   notes?: string;
+  halfPizza?: MenuItem;
 }
 
 export interface Cart {

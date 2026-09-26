@@ -114,7 +114,14 @@ export default function ConfirmPage() {
   }, [cart]);
 
   const subtotal = cart.reduce(
-    (sum, ci) => sum + (ci.variant?.price || ci.product.price || 0) * ci.quantity,
+    (sum, ci) => {
+      if (ci.halfPizza) {
+        const halfA = (ci.product.price || 0) / 2;
+        const halfB = (ci.halfPizza.price || 0) / 2;
+        return sum + (halfA + halfB) * ci.quantity;
+      }
+      return sum + (ci.variant?.price || ci.product.price || 0) * ci.quantity;
+    },
     0
   );
 
@@ -152,16 +159,24 @@ export default function ConfirmPage() {
         userId,
         customerName,
         tableNumber,
-        cart.map((ci) => ({
-          product_id: ci.product.id,
-          product_name: ci.product.name,
-          variant_id: ci.variant?.id || null,
-          variant_name: ci.variant?.name || null,
-          quantity: ci.quantity,
-          unit_price: ci.variant?.price || ci.product.price || 0,
-          subtotal: (ci.variant?.price || ci.product.price || 0) * ci.quantity,
-          notes: ci.notes || null,
-        })),
+        cart.map((ci) => {
+          const isHalf = !!ci.halfPizza;
+          const unitPrice = isHalf
+            ? ((ci.product.price || 0) + (ci.halfPizza!.price || 0)) / 2
+            : ci.variant?.price || ci.product.price || 0;
+          return {
+            product_id: ci.product.id,
+            product_name: isHalf
+              ? `${ci.product.name} (½) + ${ci.halfPizza!.name} (½)`
+              : ci.product.name,
+            variant_id: ci.variant?.id || null,
+            variant_name: ci.variant?.name || null,
+            quantity: ci.quantity,
+            unit_price: unitPrice,
+            subtotal: unitPrice * ci.quantity,
+            notes: ci.notes || null,
+          };
+        }),
         subtotal
       );
 
@@ -201,7 +216,7 @@ export default function ConfirmPage() {
           <div>
             <h1 className="text-lg font-bold text-white">Tu pedido</h1>
             <p className="text-sm text-muted">
-              Mesa {tableNumber} · {customerName}
+              {noTableMode ? "Ventanilla" : `Mesa ${tableNumber}`} · {customerName}
             </p>
           </div>
         </div>
@@ -214,7 +229,13 @@ export default function ConfirmPage() {
             className="flex items-center gap-4 p-4 rounded-xl bg-card border border-border"
           >
             <div className="flex-1 min-w-0">
-              <h4 className="font-medium text-white truncate">{ci.product.name}</h4>
+              <h4 className="font-medium text-white truncate">
+                {ci.product.name}
+                {ci.halfPizza && <span className="text-muted text-sm"> (½)</span>}
+              </h4>
+              {ci.halfPizza && (
+                <p className="text-sm text-muted truncate">{ci.halfPizza.name} (½)</p>
+              )}
               {ci.variant && (
                 <p className="text-sm text-muted truncate">{ci.variant.name}</p>
               )}
@@ -222,7 +243,9 @@ export default function ConfirmPage() {
                 <p className="text-xs text-primary mt-1 truncate">{ci.notes}</p>
               )}
               <p className="text-sm text-white mt-1">
-                {formatPrice(ci.variant?.price || ci.product.price || 0)}
+                {ci.halfPizza
+                  ? formatPrice(((ci.product.price || 0) + (ci.halfPizza.price || 0)) / 2)
+                  : formatPrice(ci.variant?.price || ci.product.price || 0)}
               </p>
             </div>
 

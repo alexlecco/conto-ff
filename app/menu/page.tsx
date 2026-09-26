@@ -8,6 +8,7 @@ import { useDatabase } from "@/lib/supabase/use-database";
 import type { MenuCategory, MenuItem, MenuItemVariant, CartItem } from "@/types/menu";
 import { formatPrice } from "@/lib/utils";
 import ImageModal from "@/components/image-modal";
+import PizzaHalfModal from "@/components/pizza-half-modal";
 
 const CALL_SOUND_URL = "https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3";
 
@@ -71,10 +72,14 @@ function VariantSelector({
 
 function MenuItemComponent({
   item,
+  categoryId,
   onAdd,
+  onPizzaAdd,
 }: {
   item: MenuItem;
+  categoryId: string;
   onAdd: (item: MenuItem, variant: MenuItemVariant | null) => void;
+  onPizzaAdd: (item: MenuItem) => void;
 }) {
   const [showVariants, setShowVariants] = useState(false);
   const [modalImage, setModalImage] = useState<{ src: string; alt: string } | null>(null);
@@ -82,9 +87,14 @@ function MenuItemComponent({
   const hasVariants = item.variants.length > 0;
   const availableVariants = item.variants.filter((v) => v.available);
   const isAvailable = item.available && (hasVariants ? availableVariants.length > 0 : item.price !== null);
+  const isPizza = categoryId === "pizzas";
 
   const handleAdd = () => {
     if (!isAvailable) return;
+    if (isPizza) {
+      onPizzaAdd(item);
+      return;
+    }
     if (hasVariants) {
       if (availableVariants.length === 1) {
         onAdd(item, availableVariants[0]);
@@ -189,6 +199,7 @@ export default function MenuPage() {
   const callSoundRef = useRef<HTMLAudioElement | null>(null);
   const [userId, setUserId] = useState("");
   const [noTableMode, setNoTableMode] = useState(false);
+  const [pizzaModalItem, setPizzaModalItem] = useState<MenuItem | null>(null);
 
   useEffect(() => {
     const loadMenu = async () => {
@@ -289,25 +300,22 @@ export default function MenuPage() {
     }
   }, [cart, cartLoaded]);
 
-  const addToCart = (item: MenuItem, variant: MenuItemVariant | null) => {
+  const addToCart = (item: MenuItem, variant: MenuItemVariant | null, notes?: string, halfPizza?: MenuItem) => {
     setCart((prev) => {
-      const existingIndex = prev.findIndex(
-        (ci) => ci.product.id === item.id && ci.variant?.id === variant?.id
-      );
-
-      if (existingIndex >= 0) {
-        const updated = [...prev];
-        updated[existingIndex].quantity += 1;
-        return updated;
-      }
-
-      return [...prev, { product: item, variant, quantity: 1 }];
+      return [...prev, { product: item, variant, quantity: 1, notes: notes || undefined, halfPizza }];
     });
   };
 
   const totalItems = cart.reduce((sum, ci) => sum + ci.quantity, 0);
   const subtotal = cart.reduce(
-    (sum, ci) => sum + (ci.variant?.price || ci.product.price || 0) * ci.quantity,
+    (sum, ci) => {
+      if (ci.halfPizza) {
+        const halfA = (ci.product.price || 0) / 2;
+        const halfB = (ci.halfPizza.price || 0) / 2;
+        return sum + (halfA + halfB) * ci.quantity;
+      }
+      return sum + (ci.variant?.price || ci.product.price || 0) * ci.quantity;
+    },
     0
   );
 
@@ -450,7 +458,7 @@ export default function MenuPage() {
                   );
                   return (
                     <div key={item.id} className="relative">
-                      <MenuItemComponent item={item} onAdd={addToCart} />
+                      <MenuItemComponent item={item} categoryId={cat.id} onAdd={addToCart} onPizzaAdd={setPizzaModalItem} />
                       {qty > 0 && (
                         <div className="absolute top-2 right-2 w-6 h-6 flex items-center justify-center bg-primary text-white text-xs font-bold rounded-full">
                           {qty}
@@ -590,6 +598,22 @@ export default function MenuPage() {
             </p>
           </div>
         </div>
+      )}
+
+      {pizzaModalItem && (
+        <PizzaHalfModal
+          pizza={pizzaModalItem}
+          otherPizzas={menu.find((c) => c.id === "pizzas")?.items || []}
+          onAddFull={(pizza, notes) => {
+            addToCart(pizza, null, notes);
+            setPizzaModalItem(null);
+          }}
+          onAddHalf={(pizza1, pizza2, notes) => {
+            addToCart(pizza1, null, notes, pizza2);
+            setPizzaModalItem(null);
+          }}
+          onClose={() => setPizzaModalItem(null)}
+        />
       )}
 
     </div>
