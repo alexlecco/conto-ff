@@ -26,8 +26,9 @@ export async function GET(request: NextRequest) {
     // Fetch category info
     const { data: catRows } = await supabase
       .from("categories")
-      .select("id, name, visible_in_no_table_mode")
-      .eq("bar_id", "bar-02-pin");
+      .select("id, name, visible_in_no_table_mode, sort_order")
+      .eq("bar_id", "bar-02-pin")
+      .order("sort_order");
 
     const catMap = new Map<string, { name: string; visibleInNoTableMode: boolean }>();
     for (const row of catRows || []) {

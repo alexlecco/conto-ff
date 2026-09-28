@@ -110,8 +110,9 @@ async function requireAdmin(request: Request) {
 async function getCategoryNameMap(supabase: ReturnType<typeof getSupabase>) {
   const { data: catRows } = await supabase
     .from("categories")
-    .select("id, name, visible_in_no_table_mode")
-    .eq("bar_id", "bar-02-pin");
+    .select("id, name, visible_in_no_table_mode, sort_order")
+    .eq("bar_id", "bar-02-pin")
+    .order("sort_order");
 
   const map = new Map<string, { name: string; visibleInNoTableMode: boolean }>();
   for (const row of catRows || []) {
@@ -284,6 +285,15 @@ export async function POST(request: Request) {
 
     if (body.type === "reorder-categories") {
       const payload = body as ReorderCategoriesPayload;
+
+      // Update categories.sort_order
+      for (let i = 0; i < payload.categoryIds.length; i++) {
+        await supabase
+          .from("categories")
+          .update({ sort_order: i })
+          .eq("id", payload.categoryIds[i])
+          .eq("bar_id", "bar-02-pin");
+      }
 
       // Update category_sort_order for all items in each category
       for (let i = 0; i < payload.categoryIds.length; i++) {
