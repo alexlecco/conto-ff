@@ -40,18 +40,31 @@ type PendingChange = {
 function ReorderCategoryItem({
   cat,
   index,
-  total,
-  onMoveUp,
-  onMoveDown,
+  onDragStart,
+  onDragOver,
+  onDragEnd,
+  isDragging,
 }: {
   cat: Category;
   index: number;
-  total: number;
-  onMoveUp: () => void;
-  onMoveDown: () => void;
+  onDragStart: (index: number) => void;
+  onDragOver: (index: number) => void;
+  onDragEnd: () => void;
+  isDragging: boolean;
 }) {
   return (
-    <div className="flex items-center gap-2 p-3 rounded-xl bg-white border border-gray-200">
+    <div
+      draggable
+      onDragStart={() => onDragStart(index)}
+      onDragOver={(e) => { e.preventDefault(); onDragOver(index); }}
+      onDragEnd={onDragEnd}
+      className={`flex items-center gap-2 p-3 rounded-xl border transition-colors cursor-grab active:cursor-grabbing ${
+        isDragging ? "bg-blue-50 border-blue-300 opacity-50" : "bg-white border-gray-200"
+      }`}
+    >
+      <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M4 8h16M4 16h16" />
+      </svg>
       <span className="text-gray-400 text-sm font-medium w-5 text-center">
         {index + 1}
       </span>
@@ -59,22 +72,6 @@ function ReorderCategoryItem({
         {cat.name}
       </span>
       <span className="text-xs text-gray-400 shrink-0">{cat.items.length} items</span>
-      <div className="flex flex-col gap-0.5 shrink-0">
-        <button
-          onClick={onMoveUp}
-          disabled={index === 0}
-          className="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-        >
-          ▲
-        </button>
-        <button
-          onClick={onMoveDown}
-          disabled={index === total - 1}
-          className="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-        >
-          ▼
-        </button>
-      </div>
     </div>
   );
 }
@@ -328,12 +325,23 @@ export default function AdminMenuPage() {
     }
   };
 
-  const handleMoveCategory = (index: number, direction: "up" | "down") => {
-    const newIndex = direction === "up" ? index - 1 : index + 1;
-    if (newIndex < 0 || newIndex >= reorderCategories.length) return;
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+
+  const handleDragStart = (index: number) => {
+    setDragIndex(index);
+  };
+
+  const handleDragOver = (index: number) => {
+    if (dragIndex === null || dragIndex === index) return;
     const updated = [...reorderCategories];
-    [updated[index], updated[newIndex]] = [updated[newIndex], updated[index]];
+    const [dragged] = updated.splice(dragIndex, 1);
+    updated.splice(index, 0, dragged);
     setReorderCategories(updated);
+    setDragIndex(index);
+  };
+
+  const handleDragEnd = () => {
+    setDragIndex(null);
   };
 
   const handleConfirmReorder = async () => {
@@ -917,16 +925,17 @@ export default function AdminMenuPage() {
                 ✕
               </button>
             </div>
-            <p className="text-xs text-gray-500">Usá las flechas para cambiar el orden</p>
+            <p className="text-xs text-gray-500">Arrastrá para cambiar el orden</p>
             <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
               {reorderCategories.map((cat, index) => (
                 <ReorderCategoryItem
                   key={cat.id}
                   cat={cat}
                   index={index}
-                  total={reorderCategories.length}
-                  onMoveUp={() => handleMoveCategory(index, "up")}
-                  onMoveDown={() => handleMoveCategory(index, "down")}
+                  onDragStart={handleDragStart}
+                  onDragOver={handleDragOver}
+                  onDragEnd={handleDragEnd}
+                  isDragging={dragIndex === index}
                 />
               ))}
             </div>
