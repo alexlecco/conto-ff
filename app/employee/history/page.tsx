@@ -22,6 +22,8 @@ interface Order {
   total: number;
   status: string;
   created_at: string;
+  waiter_order?: boolean;
+  payed?: boolean;
   items: OrderItem[];
 }
 
@@ -209,10 +211,26 @@ export default function EmployeeHistoryPage() {
                     <span className="text-sm font-medium text-gray-900">
                       {statusLabels[order.status] || order.status}
                     </span>
+                    {order.waiter_order && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                        Mozo
+                      </span>
+                    )}
+                    {order.waiter_order && (
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          order.payed
+                            ? "bg-green-100 text-green-800"
+                            : "bg-red-100 text-red-800"
+                        }`}
+                      >
+                        {order.payed ? "Pagada" : "No pagada"}
+                      </span>
+                    )}
                   </div>
                   <div className="text-right">
                     <span className="text-sm font-semibold text-gray-900">
-                      Mesa {order.table_number}
+                      {order.table_number === 0 ? "Ventanilla" : `Mesa ${order.table_number}`}
                     </span>
                     <span className="text-xs text-gray-500 block">
                       {new Date(order.created_at).toLocaleDateString("es-AR", {

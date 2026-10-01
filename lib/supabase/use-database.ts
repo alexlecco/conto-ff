@@ -25,6 +25,8 @@ export interface DBOrder {
   total: number;
   status: string;
   created_at: string;
+  waiter_order?: boolean;
+  payed?: boolean;
   items?: DBOrderItem[];
 }
 
@@ -70,7 +72,8 @@ export function useDatabase() {
         subtotal: number;
         notes: string | null;
       }[],
-      total: number
+      total: number,
+      opts?: { waiterOrder?: boolean; payed?: boolean }
     ) => {
       if (!supabase) throw new Error("Supabase not ready");
 
@@ -82,6 +85,8 @@ export function useDatabase() {
           table_number: tableNumber,
           total,
           status: "pending",
+          waiter_order: opts?.waiterOrder ?? false,
+          payed: opts?.payed ?? false,
         })
         .select()
         .single();
@@ -122,10 +127,11 @@ export function useDatabase() {
     async (userId?: string) => {
       if (!supabase) return [];
 
+      // Active = not delivered, OR delivered waiter orders not yet payed
       let query = supabase
         .from("orders")
         .select("*")
-        .neq("status", "delivered")
+        .or("status.neq.delivered,and(waiter_order.eq.true,payed.eq.false)")
         .order("created_at", { ascending: userId ? false : true });
 
       if (userId) {
@@ -135,6 +141,20 @@ export function useDatabase() {
       const { data } = await query;
       if (!data) return [];
       return fetchItemsForOrders(supabase, data);
+    },
+    [supabase]
+  );
+
+  const markOrderAsPayed = useCallback(
+    async (orderId: string) => {
+      if (!supabase) throw new Error("Supabase not ready");
+
+      const { error } = await supabase
+        .from("orders")
+        .update({ payed: true })
+        .eq("id", orderId);
+
+      if (error) throw error;
     },
     [supabase]
   );
@@ -548,6 +568,7 @@ export function useDatabase() {
     // Orders
     createOrder,
     updateOrderStatus,
+    markOrderAsPayed,
     fetchActiveOrders,
     fetchAllOrders,
     fetchTodayOrders,

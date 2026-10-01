@@ -75,6 +75,7 @@ export default function ComandaPage() {
   const {
     fetchActiveOrders,
     updateOrderStatus,
+    markOrderAsPayed,
     fetchOrderItems,
     subscribeToOrders,
     fetchActiveCalls,
@@ -88,6 +89,9 @@ export default function ComandaPage() {
   const [modalImage, setModalImage] = useState<{ src: string; alt: string } | null>(null);
   const [employeeName, setEmployeeName] = useState("");
   const [employeeRole, setEmployeeRole] = useState("");
+  const [employeeUserId, setEmployeeUserId] = useState("");
+  const [showWaiterModal, setShowWaiterModal] = useState(false);
+  const [waiterTableInput, setWaiterTableInput] = useState("");
   const callSoundRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
@@ -128,6 +132,7 @@ export default function ComandaPage() {
 
       setEmployeeName(profile.full_name || user.email?.split("@")[0] || "Empleado");
       setEmployeeRole(profile.role || "");
+      setEmployeeUserId(user.id);
 
       const activeOrders = await fetchActiveOrders();
       setOrders(activeOrders);
@@ -162,19 +167,23 @@ export default function ComandaPage() {
 
   useEffect(() => {
     const unsubscribe = subscribeToOrders(async (event: OrderEvent) => {
+      if (event.type === "DELETE") return;
+      const o = event.order;
+      const isActive = o.status !== "delivered" || (o.waiter_order === true && o.payed === false);
+
       if (event.type === "INSERT") {
-        if (event.order.status !== "delivered") {
-          const hydrated = await hydrateOrder(event.order);
+        if (isActive) {
+          const hydrated = await hydrateOrder(o);
           setOrders((prev) => [...prev, hydrated]);
         }
       } else if (event.type === "UPDATE") {
-        if (event.order.status === "delivered") {
-          setOrders((prev) => prev.filter((o) => o.id !== event.order.id));
-        } else {
-          const hydrated = await hydrateOrder(event.order);
+        if (isActive) {
+          const hydrated = await hydrateOrder(o);
           setOrders((prev) =>
-            prev.map((o) => (o.id === hydrated.id ? hydrated : o))
+            prev.map((p) => (p.id === hydrated.id ? hydrated : p))
           );
+        } else {
+          setOrders((prev) => prev.filter((p) => p.id !== o.id));
         }
       }
     });
@@ -213,6 +222,24 @@ export default function ComandaPage() {
       const reverted = await fetchActiveOrders();
       setOrders(reverted);
     }
+  };
+
+  const handleMarkAsPayed = async (orderId: string) => {
+    setOrders((prev) => prev.filter((o) => o.id !== orderId));
+    try {
+      await markOrderAsPayed(orderId);
+    } catch {
+      const reverted = await fetchActiveOrders();
+      setOrders(reverted);
+    }
+  };
+
+  const handleWaiterOrderSubmit = () => {
+    const num = parseInt(waiterTableInput, 10);
+    if (!num || num < 1 || num > 100) return;
+    setShowWaiterModal(false);
+    setWaiterTableInput("");
+    router.push(`/employee/order?table=${num}`);
   };
 
   const handleCallStatus = async (callId: string) => {
@@ -264,6 +291,15 @@ export default function ComandaPage() {
       </div>
 
       <div className="px-4 py-4">
+        {/* Botón: Pedir por el cliente */}
+        <button
+          onClick={() => setShowWaiterModal(true)}
+          className="w-full mb-4 py-3.5 rounded-xl text-white font-bold text-sm shadow-lg transition-transform active:scale-[0.98]"
+          style={{ backgroundColor: "#b45309" }}
+        >
+          + Pedir por el cliente
+        </button>
+
         {orders.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-white/70 text-lg">No hay pedidos activos</p>
@@ -285,6 +321,11 @@ export default function ComandaPage() {
                     <span className="font-semibold text-gray-900">
                       {statusLabels[order.status]}
                     </span>
+                    {order.waiter_order && (
+                      <span className="ml-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                        Mozo
+                      </span>
+                    )}
                   </div>
                   <div className="text-right">
                     <span className="font-bold text-gray-900">
@@ -353,6 +394,18 @@ export default function ComandaPage() {
                       }}
                     >
                       {nextStatusLabel[order.status]}
+                    </button>
+                  </div>
+                )}
+
+                {order.waiter_order && order.status === "delivered" && !order.payed && (
+                  <div className="px-4 py-3 border-t border-gray-100">
+                    <button
+                      onClick={() => handleMarkAsPayed(order.id)}
+                      className="w-full py-3 rounded-xl text-white font-semibold text-sm transition-colors"
+                      style={{ backgroundColor: "#16a34a" }}
+                    >
+                      Orden pagada
                     </button>
                   </div>
                 )}
@@ -432,6 +485,45 @@ export default function ComandaPage() {
           )}
         </div>
       </div>
+
+      {showWaiterModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+            <h3 className="text-lg font-bold text-gray-900 mb-1">Nuevo pedido</h3>
+            <p className="text-sm text-gray-500 mb-4">Ingresá el número de mesa</p>
+            <input
+              type="number"
+              min={1}
+              max={100}
+              value={waiterTableInput}
+              onChange={(e) => setWaiterTableInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleWaiterOrderSubmit()}
+              placeholder="Ej: 5"
+              autoFocus
+              className="w-full px-4 py-3 rounded-xl border border-gray-300 bg-gray-200 text-gray-900 placeholder:text-gray-500 text-center text-2xl font-bold mb-4 focus:outline-none focus:ring-2 focus:ring-amber-500"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setShowWaiterModal(false);
+                  setWaiterTableInput("");
+                }}
+                className="flex-1 py-3 rounded-xl bg-gray-200 text-gray-700 font-semibold text-sm"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleWaiterOrderSubmit}
+                disabled={!waiterTableInput || parseInt(waiterTableInput, 10) < 1 || parseInt(waiterTableInput, 10) > 100}
+                className="flex-1 py-3 rounded-xl text-white font-semibold text-sm disabled:opacity-50"
+                style={{ backgroundColor: "#b45309" }}
+              >
+                Continuar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {modalImage && (
         <ImageModal
