@@ -1,3 +1,5 @@
+Conto is a mobile-first PWA ordering platform with user/employee/admin roles, Supabase backend, deployed to Vercel.
+
 ##🚀 Elevator Pitch — Conto
 
 ```
