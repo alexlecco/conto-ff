@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useSupabase } from "@/lib/supabase/use-client";
 import { useDatabase, type DBOrder, type DBOrderItem, type OrderEvent } from "@/lib/supabase/use-database";
@@ -108,6 +108,12 @@ export default function OrdersPage() {
   const [lastStatusChange, setLastStatusChange] = useState<string | null>(null);
   const [editingNote, setEditingNote] = useState<{ itemId: string; currentNote: string } | null>(null);
   const [readyOrder, setReadyOrder] = useState<DBOrder | null>(null);
+  const [noTableMode, setNoTableMode] = useState(false);
+  const noTableModeRef = useRef(false);
+
+  useEffect(() => {
+    noTableModeRef.current = noTableMode;
+  }, [noTableMode]);
 
   const hydrateOrder = useCallback(
     async (order: DBOrder): Promise<DBOrder> => {
@@ -129,6 +135,11 @@ export default function OrdersPage() {
 
       const activeOrders = await fetchActiveOrders(user.id);
       setOrders(activeOrders);
+
+      const menuRes = await fetch("/api/menu");
+      const menuData = await menuRes.json();
+      setNoTableMode(menuData.noTableMode ?? false);
+
       setLoading(false);
     };
 
@@ -156,7 +167,7 @@ export default function OrdersPage() {
           setLastStatusChange(`Tu pedido ahora está: ${label}`);
           setTimeout(() => setLastStatusChange(null), 5000);
 
-          if (hydrated.status === "ready") {
+          if (hydrated.status === "ready" && noTableModeRef.current) {
             setReadyOrder(hydrated);
           }
         }
@@ -331,7 +342,7 @@ export default function OrdersPage() {
         />
       )}
 
-      {readyOrder && (
+      {readyOrder && noTableMode && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm px-6">
           <div className="w-full max-w-sm bg-[#1a1a1a] rounded-3xl overflow-hidden shadow-2xl border border-white/10">
             <div className="relative h-32 bg-gradient-to-br from-green-500/20 via-green-500/10 to-transparent flex items-center justify-center">

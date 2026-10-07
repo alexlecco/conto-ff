@@ -526,7 +526,16 @@ export default function MenuPage() {
       {showCallModal && (
         <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/50">
           <div className="w-full max-w-lg bg-background rounded-t-2xl p-6 space-y-4">
-            <h3 className="text-lg font-bold text-white">Llamar al mozo</h3>
+            <div className="flex items-start justify-between">
+              <h3 className="text-lg font-bold text-white">Llamar al mozo</h3>
+              {/* Visual only for now */}
+              <button
+                onClick={() => {}}
+                className="text-xs font-semibold px-3 py-1.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30"
+              >
+                propinita
+              </button>
+            </div>
             <p className="text-sm text-muted">
               {noTableMode ? "Ventanilla" : `Mesa ${tableNumber || "?"}`} · {customerName}
             </p>

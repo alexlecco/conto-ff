@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import InstallPrompt from "@/components/install-prompt";
 import { useInstallPrompt } from "@/lib/use-install-prompt";
 
 export default function SentPage() {
   const router = useRouter();
+  const [noTableMode, setNoTableMode] = useState(false);
   const {
     showModal,
     isInstalled,
@@ -18,6 +19,10 @@ export default function SentPage() {
 
   useEffect(() => {
     localStorage.removeItem("last_order_id");
+    fetch("/api/menu")
+      .then((res) => res.json())
+      .then((data) => setNoTableMode(data.noTableMode ?? false))
+      .catch(() => {});
   }, []);
 
   return (
@@ -42,7 +47,9 @@ export default function SentPage() {
         <div className="space-y-3">
           <h1 className="text-2xl font-bold text-white">¡Pedido enviado!</h1>
           <p className="text-muted max-w-xs mx-auto">
-            Estamos preparando tu pedido. En unos minutos lo tenés en tu mesa.
+            {noTableMode
+              ? "Estamos preparando tu pedido. En unos minutos lo tenes disponible por ventana de entrada, te avisamos."
+              : "Estamos preparando tu pedido. En unos minutos lo tenés en tu mesa."}
           </p>
         </div>
 
