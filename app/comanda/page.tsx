@@ -246,22 +246,50 @@ export default function ComandaPage() {
   const handleCallStatus = async (callId: string) => {
     const call = calls.find((c) => c.id === callId);
     if (!call) return;
-    const next = callNextStatus[call.status];
+    await advanceCallGroup([call]);
+  };
+
+  const advanceCallGroup = async (groupCalls: Call[]) => {
+    if (groupCalls.length === 0) return;
+    const next = callNextStatus[groupCalls[0].status];
     if (!next) return;
+    const ids = new Set(groupCalls.map((c) => c.id));
 
     setCalls((prev) =>
-      prev.map((c) => (c.id === callId ? { ...c, status: next } : c))
+      prev.map((c) => (ids.has(c.id) ? { ...c, status: next } : c))
     );
     try {
-      await updateCallStatus(callId, next);
+      await Promise.all([...ids].map((id) => updateCallStatus(id, next)));
       if (next === "completed") {
-        setCalls((prev) => prev.filter((c) => c.id !== callId));
+        setCalls((prev) => prev.filter((c) => !ids.has(c.id)));
       }
     } catch {
       const reverted = await fetchActiveCalls();
       setCalls(reverted as Call[]);
     }
   };
+
+  // Group calls by table + status: repeated calls from the same table stack
+  // into a single card with an xN counter and all messages listed chronologically.
+  const groupedCalls = (() => {
+    const groups = new Map<string, Call[]>();
+    for (const call of calls) {
+      const key = `${call.table_number}__${call.status}`;
+      const list = groups.get(key);
+      if (list) {
+        list.push(call);
+      } else {
+        groups.set(key, [call]);
+      }
+    }
+    return [...groups.entries()].map(([key, list]) => {
+      const chronological = [...list].sort(
+        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      );
+      const latest = chronological[chronological.length - 1];
+      return { key, calls: chronological, latest };
+    });
+  })();
 
   if (loading) {
     return (
@@ -430,32 +458,37 @@ export default function ComandaPage() {
             </div>
           ) : (
             <div className="flex flex-col" style={{ gap: "12px" }}>
-              {calls.map((call) => (
+              {groupedCalls.map((group) => (
                 <div
-                  key={call.id}
+                  key={group.key}
                   className="rounded-xl bg-white overflow-hidden shadow-lg"
                 >
                   <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
                     <div className="flex items-center gap-2">
                       <div
                         className={`w-3 h-3 rounded-full ${
-                          call.status === "submitted"
+                          group.latest.status === "submitted"
                             ? "bg-red-500"
-                            : call.status === "attended"
+                            : group.latest.status === "attended"
                             ? "bg-yellow-500"
                             : "bg-green-500"
                         }`}
                       />
                       <span className="font-semibold text-gray-900">
-                        {callStatusLabels[call.status]}
+                        {callStatusLabels[group.latest.status]}
                       </span>
+                      {group.calls.length > 1 && (
+                        <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700">
+                          x{group.calls.length}
+                        </span>
+                      )}
                     </div>
                     <div className="text-right">
                       <span className="font-bold text-gray-900">
-                        Mesa {call.table_number}
+                        Mesa {group.latest.table_number}
                       </span>
                       <span className="text-xs text-gray-500 block">
-                        {new Date(call.created_at).toLocaleTimeString("es-AR", {
+                        {new Date(group.latest.created_at).toLocaleTimeString("es-AR", {
                           hour: "2-digit",
                           minute: "2-digit",
                         })}
@@ -463,26 +496,28 @@ export default function ComandaPage() {
                     </div>
                   </div>
 
-                  <div className="px-4 py-3">
-                    <p className="text-sm text-gray-500">{call.customer_name}</p>
-                    {call.message && (
-                      <p className="text-sm text-gray-700 mt-1 italic">
-                        &quot;{call.message}&quot;
-                      </p>
-                    )}
+                  <div className="px-4 py-3 space-y-1">
+                    <p className="text-sm text-gray-500">{group.latest.customer_name}</p>
+                    {group.calls
+                      .filter((c) => c.message && c.message.trim().length > 0)
+                      .map((c) => (
+                        <p key={c.id} className="text-sm text-gray-700 italic">
+                          &quot;{c.message}&quot;
+                        </p>
+                      ))}
                   </div>
 
-                  {callNextStatus[call.status] && (
+                  {callNextStatus[group.latest.status] && (
                     <div className="px-4 py-3 border-t border-gray-100">
                       <button
-                        onClick={() => handleCallStatus(call.id)}
+                        onClick={() => advanceCallGroup(group.calls)}
                         className="w-full py-3 rounded-xl text-white font-semibold text-sm transition-colors"
                         style={{
                           backgroundColor:
-                            call.status === "submitted" ? "#f59e0b" : "#22c55e",
+                            group.latest.status === "submitted" ? "#f59e0b" : "#22c55e",
                         }}
                       >
-                        {callNextStatusLabel[call.status]}
+                        {callNextStatusLabel[group.latest.status]}
                       </button>
                     </div>
                   )}
