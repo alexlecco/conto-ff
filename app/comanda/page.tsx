@@ -6,7 +6,7 @@ import { useSupabase } from "@/lib/supabase/use-client";
 import { useDatabase, type DBOrder, type OrderEvent } from "@/lib/supabase/use-database";
 import ImageModal from "@/components/image-modal";
 import EmployeeNav from "@/components/employee-nav";
-import { HALF_PIZZA_IMAGE } from "@/lib/utils";
+import { HALF_PIZZA_IMAGE, formatPrice } from "@/lib/utils";
 
 interface Call {
   id: string;
@@ -93,6 +93,7 @@ export default function ComandaPage() {
   const [employeeUserId, setEmployeeUserId] = useState("");
   const [showWaiterModal, setShowWaiterModal] = useState(false);
   const [waiterTableInput, setWaiterTableInput] = useState("");
+  const [expandedTables, setExpandedTables] = useState<Set<number>>(new Set());
   const callSoundRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
@@ -291,6 +292,165 @@ export default function ComandaPage() {
     });
   })();
 
+  // Group orders by table: tables with several active orders collapse into
+  // a summary card (expandable to the individual order cards).
+  const groupedOrders = (() => {
+    const groups = new Map<number, DBOrder[]>();
+    for (const order of orders) {
+      const list = groups.get(order.table_number);
+      if (list) {
+        list.push(order);
+      } else {
+        groups.set(order.table_number, [order]);
+      }
+    }
+    return [...groups.entries()].map(([tableNumber, list]) => {
+      const chronological = [...list].sort(
+        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      );
+      const latest = chronological[chronological.length - 1];
+      return { tableNumber, orders: chronological, latest };
+    });
+  })();
+
+  const toggleTable = (tableNumber: number) => {
+    setExpandedTables((prev) => {
+      const next = new Set(prev);
+      if (next.has(tableNumber)) {
+        next.delete(tableNumber);
+      } else {
+        next.add(tableNumber);
+      }
+      return next;
+    });
+  };
+
+  const stopIfCollapsible = (e: React.MouseEvent, onCollapse?: () => void) => {
+    if (onCollapse) e.stopPropagation();
+  };
+
+  const renderOrderCard = (order: DBOrder, onCollapse?: () => void) => (
+    <div
+      key={order.id}
+      className={`rounded-xl bg-white overflow-hidden shadow-lg ${onCollapse ? "cursor-pointer" : ""}`}
+      onClick={onCollapse}
+    >
+      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+        <div className="flex items-center gap-2">
+          <div
+            className={`w-3 h-3 rounded-full ${
+              statusColors[order.status] || "bg-gray-400"
+            }`}
+          />
+          <span className="font-semibold text-gray-900">
+            {statusLabels[order.status]}
+          </span>
+          {order.waiter_order && (
+            <span className="ml-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+              Mozo
+            </span>
+          )}
+        </div>
+        <div className="text-right">
+          <span className="font-bold text-gray-900">
+            {order.table_number === 0 ? "Ventanilla" : `Mesa ${order.table_number}`}
+          </span>
+          <span className="text-xs text-gray-500 block">
+            {new Date(order.created_at).toLocaleTimeString("es-AR", {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </span>
+        </div>
+      </div>
+
+      <div className="px-4 py-3">
+        <p className="text-sm text-gray-500 mb-2">{order.customer_name}</p>
+        <div className="space-y-1">
+          {(order.items || []).map((item) => {
+            const isHalfPizza = item.product_name.includes("(½)");
+            const itemImage = isHalfPizza
+              ? HALF_PIZZA_IMAGE
+              : menuImageMap[item.product_name];
+            return (
+            <div
+              key={item.id}
+              className="flex items-center gap-3"
+            >
+              {itemImage && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={itemImage}
+                  alt={item.product_name}
+                  className="w-10 h-10 rounded-lg object-cover shrink-0 cursor-pointer"
+                  onClick={(e) => {
+                    stopIfCollapsible(e, onCollapse);
+                    setModalImage({ src: itemImage, alt: item.product_name });
+                  }}
+                />
+              )}
+              <div className="flex-1 min-w-0">
+                <span className="text-gray-900">
+                  {item.quantity}x {item.product_name}
+                  {item.variant_name && (
+                    <span className="text-gray-500 text-sm ml-1">
+                      ({item.variant_name})
+                    </span>
+                  )}
+                </span>
+                {item.notes && (
+                  <p className="text-xs text-amber-600 mt-0.5 truncate">
+                    {item.notes}
+                  </p>
+                )}
+              </div>
+            </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {nextStatus[order.status] && (
+        <div
+          className="px-4 py-3 border-t border-gray-100"
+          onClick={(e) => stopIfCollapsible(e, onCollapse)}
+        >
+          <button
+            onClick={() =>
+              handleUpdateStatus(order.id, nextStatus[order.status])
+            }
+            className="w-full py-3 rounded-xl text-white font-semibold text-sm transition-colors"
+            style={{
+              backgroundColor:
+                order.status === "pending"
+                  ? "#3b82f6"
+                  : order.status === "preparing"
+                  ? "#22c55e"
+                  : "#6b7280",
+            }}
+          >
+            {nextStatusLabel[order.status]}
+          </button>
+        </div>
+      )}
+
+      {order.waiter_order && order.status === "delivered" && !order.payed && (
+        <div
+          className="px-4 py-3 border-t border-gray-100"
+          onClick={(e) => stopIfCollapsible(e, onCollapse)}
+        >
+          <button
+            onClick={() => handleMarkAsPayed(order.id)}
+            className="w-full py-3 rounded-xl text-white font-semibold text-sm transition-colors"
+            style={{ backgroundColor: "#16a34a" }}
+          >
+            Orden pagada
+          </button>
+        </div>
+      )}
+    </div>
+  );
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#fab76b" }}>
@@ -335,117 +495,89 @@ export default function ComandaPage() {
           </div>
         ) : (
           <div className="flex flex-col" style={{ gap: "20px" }}>
-            {orders.map((order) => (
-              <div
-                key={order.id}
-                className="rounded-xl bg-white overflow-hidden shadow-lg"
-              >
-                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-                  <div className="flex items-center gap-2">
-                    <div
-                      className={`w-3 h-3 rounded-full ${
-                        statusColors[order.status] || "bg-gray-400"
-                      }`}
-                    />
-                    <span className="font-semibold text-gray-900">
-                      {statusLabels[order.status]}
-                    </span>
-                    {order.waiter_order && (
-                      <span className="ml-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
-                        Mozo
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-right">
-                    <span className="font-bold text-gray-900">
-                      {order.table_number === 0 ? "Ventanilla" : `Mesa ${order.table_number}`}
-                    </span>
-                    <span className="text-xs text-gray-500 block">
-                      {new Date(order.created_at).toLocaleTimeString("es-AR", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </span>
-                  </div>
-                </div>
+            {groupedOrders.map((group) => {
+              const tableLabel = group.tableNumber === 0 ? "Ventanilla" : `Mesa ${group.tableNumber}`;
 
-                <div className="px-4 py-3">
-                  <p className="text-sm text-gray-500 mb-2">{order.customer_name}</p>
-                  <div className="space-y-1">
-                    {(order.items || []).map((item) => {
-                      const isHalfPizza = item.product_name.includes("(½)");
-                      const itemImage = isHalfPizza
-                        ? HALF_PIZZA_IMAGE
-                        : menuImageMap[item.product_name];
-                      return (
-                      <div
-                        key={item.id}
-                        className="flex items-center gap-3"
-                      >
-                        {itemImage && (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={itemImage}
-                            alt={item.product_name}
-                            className="w-10 h-10 rounded-lg object-cover shrink-0 cursor-pointer"
-                            onClick={() => setModalImage({ src: itemImage, alt: item.product_name })}
-                          />
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <span className="text-gray-900">
-                            {item.quantity}x {item.product_name}
-                            {item.variant_name && (
-                              <span className="text-gray-500 text-sm ml-1">
-                                ({item.variant_name})
-                              </span>
-                            )}
-                          </span>
-                          {item.notes && (
-                            <p className="text-xs text-amber-600 mt-0.5 truncate">
-                              {item.notes}
-                            </p>
-                          )}
-                        </div>
+              // Single order: render the full card directly (current behavior).
+              if (group.orders.length === 1) {
+                return renderOrderCard(group.orders[0]);
+              }
+
+              const expanded = expandedTables.has(group.tableNumber);
+
+              // Collapsed summary card.
+              if (!expanded) {
+                return (
+                  <div
+                    key={`table-${group.tableNumber}`}
+                    onClick={() => toggleTable(group.tableNumber)}
+                    className="rounded-xl bg-white overflow-hidden shadow-lg cursor-pointer"
+                  >
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-gray-900">{tableLabel}</span>
+                        <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700">
+                          x{group.orders.length}
+                        </span>
                       </div>
-                      );
-                    })}
+                      <span className="text-xs text-gray-500">
+                        {new Date(group.latest.created_at).toLocaleTimeString("es-AR", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                    </div>
+                    <div className="px-4 py-3 space-y-2">
+                      {group.orders.map((order) => (
+                        <div key={order.id} className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div
+                              className={`w-2 h-2 rounded-full shrink-0 ${
+                                statusColors[order.status] || "bg-gray-400"
+                              }`}
+                            />
+                            <span className="text-sm text-gray-900 truncate">
+                              {statusLabels[order.status]} · {order.customer_name}
+                            </span>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <span className="text-sm font-semibold text-gray-900">
+                              {formatPrice(order.total)}
+                            </span>
+                            <span className="text-xs text-gray-500 block">
+                              {new Date(order.created_at).toLocaleTimeString("es-AR", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
+                );
+              }
+
+              // Expanded: individual order sub-cards (clicking one collapses).
+              return (
+                <div key={`table-${group.tableNumber}`} className="flex flex-col" style={{ gap: "12px" }}>
+                  <div className="flex items-center justify-between px-1">
+                    <span className="text-sm font-bold text-white">
+                      {tableLabel} · x{group.orders.length}
+                    </span>
+                    <button
+                      onClick={() => toggleTable(group.tableNumber)}
+                      className="text-xs font-semibold text-white/80 bg-white/20 px-3 py-1.5 rounded-full"
+                    >
+                      Contraer
+                    </button>
+                  </div>
+                  {group.orders.map((order) =>
+                    renderOrderCard(order, () => toggleTable(group.tableNumber))
+                  )}
                 </div>
-
-                {nextStatus[order.status] && (
-                  <div className="px-4 py-3 border-t border-gray-100">
-                    <button
-                      onClick={() =>
-                        handleUpdateStatus(order.id, nextStatus[order.status])
-                      }
-                      className="w-full py-3 rounded-xl text-white font-semibold text-sm transition-colors"
-                      style={{
-                        backgroundColor:
-                          order.status === "pending"
-                            ? "#3b82f6"
-                            : order.status === "preparing"
-                            ? "#22c55e"
-                            : "#6b7280",
-                      }}
-                    >
-                      {nextStatusLabel[order.status]}
-                    </button>
-                  </div>
-                )}
-
-                {order.waiter_order && order.status === "delivered" && !order.payed && (
-                  <div className="px-4 py-3 border-t border-gray-100">
-                    <button
-                      onClick={() => handleMarkAsPayed(order.id)}
-                      className="w-full py-3 rounded-xl text-white font-semibold text-sm transition-colors"
-                      style={{ backgroundColor: "#16a34a" }}
-                    >
-                      Orden pagada
-                    </button>
-                  </div>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
