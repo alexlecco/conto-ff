@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { MenuItem } from "@/types/menu";
-import { formatPrice } from "@/lib/utils";
+import { formatPrice, halfPizzaHalfPrice, halfPizzaTotalPrice } from "@/lib/utils";
 
 export default function PizzaHalfModal({
   pizza,
@@ -22,9 +22,11 @@ export default function PizzaHalfModal({
   const [notes, setNotes] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
 
-  const halfPriceA = (pizza.price || 0) / 2;
-  const halfPriceB = selectedHalf ? (selectedHalf.price || 0) / 2 : 0;
-  const totalHalfPrice = halfPriceA + halfPriceB;
+  const halfPriceA = halfPizzaHalfPrice(pizza.price || 0);
+  const halfPriceB = selectedHalf ? halfPizzaHalfPrice(selectedHalf.price || 0) : 0;
+  const totalHalfPrice = selectedHalf
+    ? halfPizzaTotalPrice(pizza.price || 0, selectedHalf.price || 0)
+    : halfPriceA;
 
   const handleConfirm = () => {
     if (isHalf && selectedHalf) {

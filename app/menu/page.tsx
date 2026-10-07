@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useSupabase } from "@/lib/supabase/use-client";
 import { useDatabase } from "@/lib/supabase/use-database";
 import type { MenuCategory, MenuItem, MenuItemVariant, CartItem } from "@/types/menu";
-import { formatPrice } from "@/lib/utils";
+import { formatPrice, halfPizzaTotalPrice } from "@/lib/utils";
 import ImageModal from "@/components/image-modal";
 import PizzaHalfModal from "@/components/pizza-half-modal";
 
@@ -310,9 +310,7 @@ export default function MenuPage() {
   const subtotal = cart.reduce(
     (sum, ci) => {
       if (ci.halfPizza) {
-        const halfA = (ci.product.price || 0) / 2;
-        const halfB = (ci.halfPizza.price || 0) / 2;
-        return sum + (halfA + halfB) * ci.quantity;
+        return sum + halfPizzaTotalPrice(ci.product.price || 0, ci.halfPizza.price || 0) * ci.quantity;
       }
       return sum + (ci.variant?.price || ci.product.price || 0) * ci.quantity;
     },

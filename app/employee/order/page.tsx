@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useSupabase } from "@/lib/supabase/use-client";
 import { useDatabase } from "@/lib/supabase/use-database";
 import type { MenuCategory, MenuItem, MenuItemVariant, CartItem } from "@/types/menu";
-import { formatPrice } from "@/lib/utils";
+import { formatPrice, halfPizzaTotalPrice, HALF_PIZZA_IMAGE } from "@/lib/utils";
 import ImageModal from "@/components/image-modal";
 import PizzaHalfModal from "@/components/pizza-half-modal";
 
@@ -247,9 +247,7 @@ function EmployeeOrderContent() {
   const subtotal = cart.reduce(
     (sum, ci) => {
       if (ci.halfPizza) {
-        const halfA = (ci.product.price || 0) / 2;
-        const halfB = (ci.halfPizza.price || 0) / 2;
-        return sum + (halfA + halfB) * ci.quantity;
+        return sum + halfPizzaTotalPrice(ci.product.price || 0, ci.halfPizza.price || 0) * ci.quantity;
       }
       return sum + (ci.variant?.price || ci.product.price || 0) * ci.quantity;
     },
@@ -278,7 +276,7 @@ function EmployeeOrderContent() {
         cart.map((ci) => {
           const isHalf = !!ci.halfPizza;
           const unitPrice = isHalf
-            ? ((ci.product.price || 0) + (ci.halfPizza!.price || 0)) / 2
+            ? halfPizzaTotalPrice(ci.product.price || 0, ci.halfPizza!.price || 0)
             : ci.variant?.price || ci.product.price || 0;
           return {
             product_id: ci.product.id,
@@ -348,9 +346,9 @@ function EmployeeOrderContent() {
             <div className="space-y-3">
               {cart.map((ci, idx) => (
                 <div key={idx} className="flex items-start gap-3 pb-3 border-b border-gray-100 last:border-0 last:pb-0">
-                  {ci.product.image_url && (
+                  {(ci.halfPizza ? HALF_PIZZA_IMAGE : ci.product.image_url) && (
                     <img
-                      src={ci.product.image_url}
+                      src={ci.halfPizza ? HALF_PIZZA_IMAGE : ci.product.image_url!}
                       alt={ci.product.name}
                       className="w-12 h-12 rounded-lg object-cover shrink-0"
                     />
@@ -372,7 +370,7 @@ function EmployeeOrderContent() {
                   <span className="text-gray-900 font-semibold shrink-0">
                     {formatPrice(
                       ci.halfPizza
-                        ? ((ci.product.price || 0) + (ci.halfPizza.price || 0)) / 2 * ci.quantity
+                        ? halfPizzaTotalPrice(ci.product.price || 0, ci.halfPizza.price || 0) * ci.quantity
                         : (ci.variant?.price || ci.product.price || 0) * ci.quantity
                     )}
                   </span>

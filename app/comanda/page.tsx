@@ -6,6 +6,7 @@ import { useSupabase } from "@/lib/supabase/use-client";
 import { useDatabase, type DBOrder, type OrderEvent } from "@/lib/supabase/use-database";
 import ImageModal from "@/components/image-modal";
 import EmployeeNav from "@/components/employee-nav";
+import { HALF_PIZZA_IMAGE } from "@/lib/utils";
 
 interface Call {
   id: string;
@@ -343,18 +344,23 @@ export default function ComandaPage() {
                 <div className="px-4 py-3">
                   <p className="text-sm text-gray-500 mb-2">{order.customer_name}</p>
                   <div className="space-y-1">
-                    {(order.items || []).map((item) => (
+                    {(order.items || []).map((item) => {
+                      const isHalfPizza = item.product_name.includes("(½)");
+                      const itemImage = isHalfPizza
+                        ? HALF_PIZZA_IMAGE
+                        : menuImageMap[item.product_name];
+                      return (
                       <div
                         key={item.id}
                         className="flex items-center gap-3"
                       >
-                        {menuImageMap[item.product_name] && (
+                        {itemImage && (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
-                            src={menuImageMap[item.product_name]}
+                            src={itemImage}
                             alt={item.product_name}
                             className="w-10 h-10 rounded-lg object-cover shrink-0 cursor-pointer"
-                            onClick={() => setModalImage({ src: menuImageMap[item.product_name], alt: item.product_name })}
+                            onClick={() => setModalImage({ src: itemImage, alt: item.product_name })}
                           />
                         )}
                         <div className="flex-1 min-w-0">
@@ -373,7 +379,8 @@ export default function ComandaPage() {
                           )}
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 

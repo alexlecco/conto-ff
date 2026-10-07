@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSupabase } from "@/lib/supabase/use-client";
 import { useDatabase } from "@/lib/supabase/use-database";
 import type { CartItem } from "@/types/menu";
-import { formatPrice } from "@/lib/utils";
+import { formatPrice, halfPizzaTotalPrice } from "@/lib/utils";
 
 function NoteModal({
   note,
@@ -116,9 +116,7 @@ export default function ConfirmPage() {
   const subtotal = cart.reduce(
     (sum, ci) => {
       if (ci.halfPizza) {
-        const halfA = (ci.product.price || 0) / 2;
-        const halfB = (ci.halfPizza.price || 0) / 2;
-        return sum + (halfA + halfB) * ci.quantity;
+        return sum + halfPizzaTotalPrice(ci.product.price || 0, ci.halfPizza.price || 0) * ci.quantity;
       }
       return sum + (ci.variant?.price || ci.product.price || 0) * ci.quantity;
     },
@@ -162,7 +160,7 @@ export default function ConfirmPage() {
         cart.map((ci) => {
           const isHalf = !!ci.halfPizza;
           const unitPrice = isHalf
-            ? ((ci.product.price || 0) + (ci.halfPizza!.price || 0)) / 2
+            ? halfPizzaTotalPrice(ci.product.price || 0, ci.halfPizza!.price || 0)
             : ci.variant?.price || ci.product.price || 0;
           return {
             product_id: ci.product.id,
@@ -244,7 +242,7 @@ export default function ConfirmPage() {
               )}
               <p className="text-sm text-white mt-1">
                 {ci.halfPizza
-                  ? formatPrice(((ci.product.price || 0) + (ci.halfPizza.price || 0)) / 2)
+                  ? formatPrice(halfPizzaTotalPrice(ci.product.price || 0, ci.halfPizza.price || 0))
                   : formatPrice(ci.variant?.price || ci.product.price || 0)}
               </p>
             </div>
