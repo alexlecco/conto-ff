@@ -72,6 +72,16 @@ export default function InstallPrompt({
               </div>
             </div>
           )}
+          {!isIOSDevice && !deferredPrompt && (
+            <div className="bg-white/5 rounded-xl p-4 space-y-2">
+              <p className="text-xs text-muted text-left">
+                1. Tocá el menú <span className="font-semibold text-white">⋮</span> de Chrome arriba a la derecha
+              </p>
+              <p className="text-xs text-muted text-left">
+                2. Seleccioná <span className="font-semibold text-white">Agregar a pantalla principal</span> o <span className="font-semibold text-white">Instalar app</span>
+              </p>
+            </div>
+          )}
           <button
             onClick={onDismiss}
             className="w-full py-3 rounded-xl bg-white/5 hover:bg-white/10 text-muted text-sm font-medium transition-colors"
